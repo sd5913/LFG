@@ -46,12 +46,20 @@ These are planned technologies and do not indicate that a working implementation
 
 ## Getting Started
 
-**Current status:** The project scaffold and run commands have not yet been established. The information below will be completed after the project is initialized and should not be interpreted as evidence that the repository is currently runnable.
+**Current status:** A small, independently runnable pose-shadow prototype is available. The full Museum Heist game is still planned rather than implemented.
 
-- **Requirements:** TBD — Node.js version, supported browsers, and camera requirements
-- **Installation:** TBD — dependency installation instructions will be added after the project scaffold is created
-- **Run locally:** TBD — local development-server command
-- **Build/demo:** TBD — production build command and demonstration instructions
+- **Requirements:** Node.js 20+ and a current Chrome, Edge, or Safari browser with an available camera. Camera access normally requires `localhost` or HTTPS.
+- **Installation:** `npm install`
+- **Run locally:** `npm run dev`, then open the local URL printed by Vite.
+- **Build/demo:** `npm run build` creates the production bundle; `npm run preview` serves it locally.
+
+### Pose Shadow Lab prototype
+
+The first working interaction is at the root page. Select **Start camera**, grant camera permission, and move your head, shoulders, arms, or hands. MediaPipe Pose Landmarker detects one upper body and renders a mirrored 2D skeletal shadow in real time.
+
+- Camera frames and landmarks are processed in the browser and are not recorded or uploaded by this demo.
+- The MediaPipe task model is downloaded from Google's public model hosting on first use, and the browser library is loaded from jsDelivr; an internet connection is therefore needed for the first run.
+- Detection quality depends on lighting, framing, camera permissions, and GPU/browser support. Keep the upper body visible in frame.
 
 ## Project Progress
 
@@ -71,7 +79,8 @@ Before release, this section will document all third-party code, libraries, imag
 
 | Item | Source / Author | License or Notes | Use / Modifications |
 |---|---|---|---|
-| TBD | TBD | TBD | TBD |
+| MediaPipe Tasks Vision / Pose Landmarker Lite | Google / MediaPipe | Apache-2.0; confirm before release | Browser-local, single-person upper-body landmark detection for the prototype |
+| DM Mono and Playfair Display | Google Fonts | See Google Fonts licensing | Prototype typography |
 
 ## Known Limitations
 
