@@ -13,7 +13,7 @@ const UPPER_BODY = [
 const JOINTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24];
 const HOLD_DURATION_MS = 3000;
 const TARGET_ARM_CONFIGS = {
-  'hands-at-heart': { upper: [0.1, 1], forearm: [-0.85, -0.2] },
+  'hands-at-heart': { upper: [0, 0.9], forearm: [-0.85, -0.2] },
   'holding-scroll': { upper: [0.05, 1], forearm: [-0.62, 0.38] },
   'arms-crossed': { upper: [-0.6, 0.8], forearm: [-0.85, 0.25] },
 };
@@ -60,12 +60,18 @@ function getTargetGuide(width, height, target, landmarks) {
     + Math.hypot(canvasPoint(14).x - canvasPoint(16).x, canvasPoint(14).y - canvasPoint(16).y)) / 2;
   const upperArmLength = Math.min(Math.max(measuredUpperArm, shoulderWidth * 0.42), shoulderWidth * 0.68);
   const forearmLength = Math.min(Math.max(measuredForearm, shoulderWidth * 0.42), shoulderWidth * 0.68);
+  // A seated player needs room for their elbows. For the heart pose, derive the
+  // outward bend from that player's shoulder width and upper-arm length rather
+  // than using one fixed, narrow elbow position.
+  const upperSideFactor = target.id === 'hands-at-heart'
+    ? Math.min(0.58, Math.max(0.42, (shoulderWidth / upperArmLength) * 0.24))
+    : config.upper[0];
   const unit = ([x, y]) => {
     const length = Math.hypot(x, y);
     return { x: x / length, y: y / length };
   };
   const createArm = (shoulder, side) => {
-    const upperDirection = unit([side * config.upper[0], config.upper[1]]);
+    const upperDirection = unit([side * upperSideFactor, config.upper[1]]);
     const elbow = { x: shoulder.x + upperDirection.x * upperArmLength, y: shoulder.y + upperDirection.y * upperArmLength };
     const forearmDirection = unit([side * config.forearm[0], config.forearm[1]]);
     return { elbow, wrist: { x: elbow.x + forearmDirection.x * forearmLength, y: elbow.y + forearmDirection.y * forearmLength } };
