@@ -11,7 +11,8 @@ const UPPER_BODY = [
   [11, 23], [12, 24], [23, 24],
 ];
 const JOINTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24];
-const HOLD_DURATION_MS = 3000;
+const HOLD_DURATION_MS = 2000;
+const JITTER_GRACE_MS = 220;
 const TARGET_ARM_CONFIGS = {
   'hands-at-heart': { upper: [0, 0.9], forearm: [-0.85, -0.2] },
   'holding-scroll': { upper: [0.05, 1], forearm: [-0.62, 0.38] },
@@ -82,7 +83,7 @@ function getTargetGuide(width, height, target, landmarks) {
   const rightArm = createArm(points.rightShoulder, rightSide);
   Object.assign(points, { leftElbow: leftArm.elbow, leftWrist: leftArm.wrist, rightElbow: rightArm.elbow, rightWrist: rightArm.wrist });
   const actionLandmarks = { leftElbow: 13, leftWrist: 15, rightElbow: 14, rightWrist: 16 };
-  const matchRadius = Math.max(20, shoulderWidth * 0.3);
+  const matchRadius = Math.max(28, shoulderWidth * 0.46);
   const matchedPoints = Object.fromEntries(Object.entries(actionLandmarks).map(([name, index]) => {
     const live = canvasPoint(index);
     return [name, Math.hypot(live.x - points[name].x, live.y - points[name].y) < matchRadius];
@@ -196,6 +197,7 @@ export function PoseShadowDemo() {
   const lastTimeRef = useRef(-1);
   const targetIndexRef = useRef(0);
   const holdStartedAtRef = useRef(null);
+  const lastMatchingAtRef = useRef(0);
   const lastProgressRef = useRef(0);
   const [status, setStatus] = useState('摄像头未启动');
   const [isRunning, setIsRunning] = useState(false);
@@ -212,6 +214,7 @@ export function PoseShadowDemo() {
     if (videoRef.current) videoRef.current.srcObject = null;
     if (canvasRef.current) drawShadow(canvasRef.current, null, false, TARGETS[targetIndexRef.current]);
     holdStartedAtRef.current = null;
+    lastMatchingAtRef.current = 0;
     lastProgressRef.current = 0;
     setHoldProgress(0);
     setIsRunning(false);
@@ -234,13 +237,9 @@ export function PoseShadowDemo() {
       const matching = Boolean(guide?.isMatched);
       drawShadow(canvas, landmarks, matching, target, guide);
       setPoseFound(Boolean(landmarks));
-      if (!landmarks) {
-        holdStartedAtRef.current = null;
-        if (lastProgressRef.current !== 0) setHoldProgress(0);
-        lastProgressRef.current = 0;
-        setStatus('请站到镜头内，让头部、肩膀与双手都可见');
-      } else if (matching) {
-        const now = performance.now();
+      const now = performance.now();
+      if (landmarks && matching) {
+        lastMatchingAtRef.current = now;
         holdStartedAtRef.current ??= now;
         const progress = Math.min(100, ((now - holdStartedAtRef.current) / HOLD_DURATION_MS) * 100);
         if (Math.abs(progress - lastProgressRef.current) > 0.8) {
@@ -260,10 +259,15 @@ export function PoseShadowDemo() {
           setStatus(`姿势匹配中，请再保持 ${(HOLD_DURATION_MS / 1000 - ((now - holdStartedAtRef.current) / 1000)).toFixed(1)} 秒`);
         }
       } else {
-        holdStartedAtRef.current = null;
-        if (lastProgressRef.current !== 0) setHoldProgress(0);
-        lastProgressRef.current = 0;
-        setStatus(`模仿目标姿势：${target.title}`);
+        const stillWithinGrace = holdStartedAtRef.current && now - lastMatchingAtRef.current < JITTER_GRACE_MS;
+        if (stillWithinGrace) {
+          setStatus('正在容忍短暂识别抖动，请保持姿势');
+        } else {
+          holdStartedAtRef.current = null;
+          if (lastProgressRef.current !== 0) setHoldProgress(0);
+          lastProgressRef.current = 0;
+          setStatus(landmarks ? `模仿目标姿势：${target.title}` : '请站到镜头内，让头部、肩膀与双手都可见');
+        }
       }
     }
     frameRef.current = requestAnimationFrame(detectFrame);
@@ -328,17 +332,17 @@ export function PoseShadowDemo() {
       <header className="hero">
         <p className="eyebrow">Museum Heist · interaction prototype</p>
         <h1>Pose Shadow Lab</h1>
-        <p className="intro">模仿博物馆的目标剪影。保持姿势连续匹配 3 秒，即可完成当前伪装并进入下一项任务。</p>
+        <p className="intro">模仿博物馆的目标剪影。保持姿势连续匹配 2 秒，即可完成当前伪装并进入下一项任务。</p>
       </header>
 
       <section className="task-panel" aria-label="Current pose task">
         <div className="task-copy">
           <p className="task-kicker">当前伪装任务 · {targetIndex + 1} / {TARGETS.length}</p>
           <h2>{TARGETS[targetIndex].title}</h2>
-          <p>{TARGETS[targetIndex].description} 目标与实时映射使用完全相同的关节和骨架结构；每个手肘、手腕落入目标点周围约 30% 肩宽的容差范围时会亮起白光。</p>
+          <p>{TARGETS[targetIndex].description} 目标与实时映射使用完全相同的关节和骨架结构；每个手肘、手腕落入目标点周围约 46% 肩宽的容差范围时会亮起白光，并容忍极短暂的识别抖动。</p>
         </div>
         <div className="hold-meter" aria-label={`Pose hold progress: ${Math.round(holdProgress)} percent`}>
-          <div className="hold-meter-label"><span>{holdProgress > 0 ? '保持姿势中' : '等待匹配'}</span><strong>{Math.ceil(holdProgress / 100 * 3)} / 3 秒</strong></div>
+          <div className="hold-meter-label"><span>{holdProgress > 0 ? '保持姿势中' : '等待匹配'}</span><strong>{Math.ceil(holdProgress / 100 * (HOLD_DURATION_MS / 1000))} / {HOLD_DURATION_MS / 1000} 秒</strong></div>
           <div className="progress-track"><span style={{ width: `${holdProgress}%` }} /></div>
           <p>已完成 {completedTasks} 项伪装</p>
         </div>
@@ -377,7 +381,7 @@ export function PoseShadowDemo() {
         <h2>试玩方法</h2>
         <ol>
           <li>允许摄像头权限，并确保头部、肩膀、手肘和手腕都在画面内。</li>
-          <li>右侧画布中的淡蓝虚线是目标动作；它会随你的头肩位置缩放。手肘或手腕进入目标点周围约 30% 肩宽的范围时，对应点会亮起白光；影子变绿后，持续保持到进度条填满。</li>
+          <li>右侧画布中的淡蓝虚线是目标动作；它会随你的头肩位置缩放。手肘或手腕进入目标点周围约 46% 肩宽的范围时，对应点会亮起白光；影子变绿后，保持约 2 秒到进度条填满。</li>
           <li>每次完成会自动切换下一项任务；画面为镜像显示，且一次只追踪一人。</li>
         </ol>
       </section>
