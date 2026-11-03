@@ -13,16 +13,16 @@ const UPPER_BODY = [
 const JOINTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24];
 const HOLD_DURATION_MS = 3000;
 const TARGET_ARM_CONFIGS = {
-  'hands-in-prayer': { upper: [0.18, 1], forearm: [-0.88, 0.48] },
+  'hands-at-heart': { upper: [0.1, 1], forearm: [-0.85, -0.2] },
   'holding-scroll': { upper: [0.05, 1], forearm: [-0.62, 0.38] },
   'arms-crossed': { upper: [-0.6, 0.8], forearm: [-0.85, 0.25] },
 };
 
 const TARGETS = [
   {
-    id: 'hands-in-prayer',
-    title: '祈祷雕像',
-    description: '双手在胸前合拢，像一尊安静的祈祷雕像。',
+    id: 'hands-at-heart',
+    title: '护心雕像',
+    description: '双手叠在锁骨下方的胸口中心，手肘自然向下弯曲。',
   },
   {
     id: 'holding-scroll',
