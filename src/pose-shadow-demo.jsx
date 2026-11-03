@@ -12,17 +12,23 @@ const UPPER_BODY = [
 ];
 const JOINTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24];
 const HOLD_DURATION_MS = 3000;
+const TARGET_POSE_POINTS = {
+  'hands-in-prayer': { leftElbow: [38, 55], leftWrist: [48, 58], rightElbow: [62, 55], rightWrist: [52, 58] },
+  'holding-scroll': { leftElbow: [35, 58], leftWrist: [43, 64], rightElbow: [65, 58], rightWrist: [57, 64] },
+  'hand-at-chin': { leftElbow: [37, 61], leftWrist: [29, 71], rightElbow: [67, 48], rightWrist: [57, 26] },
+  'arms-crossed': { leftElbow: [38, 57], leftWrist: [61, 46], rightElbow: [62, 57], rightWrist: [39, 46] },
+};
 
 const TARGETS = [
   {
-    id: 'hands-at-waist',
-    title: '守护藏品',
-    description: '双手在腰前靠近，像小心捧住一件展品。',
-  },
-  {
     id: 'hands-in-prayer',
     title: '祈祷雕像',
-    description: '双手在胸前合拢，手腕彼此靠近。',
+    description: '双手在胸前合拢，像一尊安静的祈祷雕像。',
+  },
+  {
+    id: 'holding-scroll',
+    title: '持卷轴雕像',
+    description: '双手在胸前微微分开，像捧着一卷珍贵文物。',
   },
   {
     id: 'hand-at-chin',
@@ -57,10 +63,15 @@ function isTargetPose(landmarks, targetId) {
   const closeHands = wristDistance < Math.max(0.15, shoulderWidth * 0.8);
 
   switch (targetId) {
-    case 'hands-at-waist':
-      return closeHands && wristMiddleY > shoulderMiddleY + 0.24 && wristMiddleY < hipMiddleY + 0.1;
     case 'hands-in-prayer':
       return closeHands && wristMiddleY > shoulderMiddleY - 0.02 && wristMiddleY < shoulderMiddleY + 0.25;
+    case 'holding-scroll':
+      return wristDistance > Math.max(0.11, shoulderWidth * 0.48)
+        && wristDistance < shoulderWidth * 1.45
+        && wristMiddleY > shoulderMiddleY + 0.02
+        && wristMiddleY < hipMiddleY - 0.08
+        && leftElbow.y < hipMiddleY - 0.02
+        && rightElbow.y < hipMiddleY - 0.02;
     case 'hand-at-chin':
       return Math.hypot(rightWrist.x - landmarks[0].x, rightWrist.y - landmarks[0].y) < Math.max(0.16, shoulderWidth * 0.8)
         && rightElbow.y > rightShoulder.y - 0.02;
@@ -72,10 +83,51 @@ function isTargetPose(landmarks, targetId) {
   }
 }
 
-function drawShadow(canvas, landmarks, isMatching = false) {
+function drawTargetGuide(context, width, height, target) {
+  const pose = TARGET_POSE_POINTS[target.id];
+  if (!pose) return;
+  const points = {
+    head: [50, 16], leftShoulder: [38, 42], rightShoulder: [62, 42], leftHip: [43, 84], rightHip: [57, 84], ...pose,
+  };
+  const at = ([x, y]) => [x / 100 * width, y / 100 * height];
+  const connections = [
+    ['head', 'leftShoulder'], ['head', 'rightShoulder'], ['leftShoulder', 'rightShoulder'],
+    ['leftShoulder', 'leftElbow'], ['leftElbow', 'leftWrist'], ['rightShoulder', 'rightElbow'], ['rightElbow', 'rightWrist'],
+    ['leftShoulder', 'leftHip'], ['rightShoulder', 'rightHip'], ['leftHip', 'rightHip'],
+  ];
+  context.save();
+  context.strokeStyle = 'rgba(132, 196, 217, .72)';
+  context.fillStyle = 'rgba(167, 220, 235, .78)';
+  context.lineWidth = Math.max(8, width * 0.014);
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.setLineDash([10, 12]);
+  context.beginPath();
+  connections.forEach(([from, to]) => {
+    const [x1, y1] = at(points[from]);
+    const [x2, y2] = at(points[to]);
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+  });
+  context.stroke();
+  context.setLineDash([]);
+  Object.values(points).forEach((point) => {
+    const [x, y] = at(point);
+    context.beginPath();
+    context.arc(x, y, width * 0.016, 0, Math.PI * 2);
+    context.fill();
+  });
+  context.font = `500 ${Math.max(12, width * 0.022)}px 'DM Mono', monospace`;
+  context.fillStyle = 'rgba(190, 232, 242, .92)';
+  context.fillText(`目标雕像：${target.title}`, width * 0.04, height * 0.08);
+  context.restore();
+}
+
+function drawShadow(canvas, landmarks, isMatching = false, target = TARGETS[0]) {
   const context = canvas.getContext('2d');
   const { width, height } = canvas;
   context.clearRect(0, 0, width, height);
+  drawTargetGuide(context, width, height, target);
 
   if (!landmarks) return;
   const point = (index) => {
@@ -115,13 +167,7 @@ function drawShadow(canvas, landmarks, isMatching = false) {
 }
 
 function TargetPoseIcon({ target }) {
-  const poses = {
-    'hands-at-waist': { leftElbow: [37, 62], leftWrist: [47, 79], rightElbow: [63, 62], rightWrist: [53, 79] },
-    'hands-in-prayer': { leftElbow: [38, 59], leftWrist: [48, 62], rightElbow: [62, 59], rightWrist: [52, 62] },
-    'hand-at-chin': { leftElbow: [37, 64], leftWrist: [28, 79], rightElbow: [67, 49], rightWrist: [57, 25] },
-    'arms-crossed': { leftElbow: [38, 59], leftWrist: [61, 47], rightElbow: [62, 59], rightWrist: [39, 47] },
-  };
-  const pose = poses[target.id];
+  const pose = TARGET_POSE_POINTS[target.id];
   const lines = [[50, 21, 38, 45], [50, 21, 62, 45], [38, 45, pose.leftElbow[0], pose.leftElbow[1]], [pose.leftElbow[0], pose.leftElbow[1], pose.leftWrist[0], pose.leftWrist[1]], [62, 45, pose.rightElbow[0], pose.rightElbow[1]], [pose.rightElbow[0], pose.rightElbow[1], pose.rightWrist[0], pose.rightWrist[1]], [38, 45, 42, 86], [62, 45, 58, 86], [42, 86, 58, 86]];
   return (
     <svg className="target-icon" viewBox="0 0 100 100" aria-label={`${target.title} target pose`} role="img">
@@ -142,7 +188,7 @@ export function PoseShadowDemo() {
   const targetIndexRef = useRef(0);
   const holdStartedAtRef = useRef(null);
   const lastProgressRef = useRef(0);
-  const [status, setStatus] = useState('Camera is off');
+  const [status, setStatus] = useState('摄像头未启动');
   const [isRunning, setIsRunning] = useState(false);
   const [poseFound, setPoseFound] = useState(false);
   const [error, setError] = useState('');
@@ -155,13 +201,13 @@ export function PoseShadowDemo() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    if (canvasRef.current) drawShadow(canvasRef.current, null);
+    if (canvasRef.current) drawShadow(canvasRef.current, null, false, TARGETS[targetIndexRef.current]);
     holdStartedAtRef.current = null;
     lastProgressRef.current = 0;
     setHoldProgress(0);
     setIsRunning(false);
     setPoseFound(false);
-    setStatus('Camera is off');
+    setStatus('摄像头未启动');
   }, []);
 
   const detectFrame = useCallback(() => {
@@ -176,7 +222,7 @@ export function PoseShadowDemo() {
       const landmarks = result.landmarks[0];
       const target = TARGETS[targetIndexRef.current];
       const matching = isTargetPose(landmarks, target.id);
-      drawShadow(canvas, landmarks, matching);
+      drawShadow(canvas, landmarks, matching, target);
       setPoseFound(Boolean(landmarks));
       if (!landmarks) {
         holdStartedAtRef.current = null;
@@ -263,6 +309,10 @@ export function PoseShadowDemo() {
     landmarkerRef.current?.close();
   }, []);
 
+  useEffect(() => {
+    if (!isRunning && canvasRef.current) drawShadow(canvasRef.current, null, false, TARGETS[targetIndex]);
+  }, [isRunning, targetIndex]);
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -276,7 +326,7 @@ export function PoseShadowDemo() {
         <div className="task-copy">
           <p className="task-kicker">当前伪装任务 · {targetIndex + 1} / {TARGETS.length}</p>
           <h2>{TARGETS[targetIndex].title}</h2>
-          <p>{TARGETS[targetIndex].description}</p>
+          <p>{TARGETS[targetIndex].description} 目标轮廓也会叠加在右侧画布中，方便直接对照。</p>
         </div>
         <div className="hold-meter" aria-label={`Pose hold progress: ${Math.round(holdProgress)} percent`}>
           <div className="hold-meter-label"><span>{holdProgress > 0 ? '保持姿势中' : '等待匹配'}</span><strong>{Math.ceil(holdProgress / 100 * 3)} / 3 秒</strong></div>
@@ -295,11 +345,11 @@ export function PoseShadowDemo() {
         </div>
 
         <div className="shadow-card">
-          <div className="card-label"><span className={poseFound ? 'detected-dot' : 'waiting-dot'} /> 2D 姿势影子</div>
+          <div className="card-label"><span className={poseFound ? 'detected-dot' : 'waiting-dot'} /> 2D 姿势影子与目标轮廓</div>
           <div className="shadow-stage">
             <div className="spotlight" />
             <canvas ref={canvasRef} width="720" height="540" aria-label="Live 2D upper-body pose shadow" />
-            {!poseFound && <div className="shadow-hint">{isRunning ? '请让头部、肩膀与双手都出现在画面中' : '启动摄像头后生成你的影子'}</div>}
+            {!poseFound && <div className="shadow-hint">{isRunning ? '请让头部、肩膀与双手都出现在画面中' : '淡蓝虚线是目标；启动摄像头后会叠加你的影子'}</div>}
           </div>
         </div>
       </section>
@@ -318,7 +368,7 @@ export function PoseShadowDemo() {
         <h2>试玩方法</h2>
         <ol>
           <li>允许摄像头权限，并确保头部、肩膀、手肘和手腕都在画面内。</li>
-          <li>模仿上方的目标姿势。影子变绿后，持续保持到进度条填满。</li>
+          <li>右侧画布中的淡蓝虚线是目标动作；让你的发光影子与它对齐。影子变绿后，持续保持到进度条填满。</li>
           <li>每次完成会自动切换下一项任务；画面为镜像显示，且一次只追踪一人。</li>
         </ol>
       </section>
