@@ -83,43 +83,79 @@ function isTargetPose(landmarks, targetId) {
   }
 }
 
-function drawTargetGuide(context, width, height, target) {
+function getTargetGuide(width, height, target, landmarks) {
   const pose = TARGET_POSE_POINTS[target.id];
-  if (!pose) return;
-  const points = {
-    head: [50, 16], leftShoulder: [38, 42], rightShoulder: [62, 42], leftHip: [43, 84], rightHip: [57, 84], ...pose,
-  };
-  const at = ([x, y]) => [x / 100 * width, y / 100 * height];
+  if (!pose) return null;
+  const canvasPoint = (index) => ({ x: (1 - landmarks[index].x) * width, y: landmarks[index].y * height });
+  const canFollowPlayer = landmarks && pointsAreReliable(landmarks, [0, 11, 12]);
+  const liveLeftShoulder = canFollowPlayer ? canvasPoint(11) : null;
+  const liveRightShoulder = canFollowPlayer ? canvasPoint(12) : null;
+  const center = canFollowPlayer
+    ? { x: (liveLeftShoulder.x + liveRightShoulder.x) / 2, y: (liveLeftShoulder.y + liveRightShoulder.y) / 2 }
+    : { x: width / 2, y: height * 0.48 };
+  const unit = canFollowPlayer
+    ? Math.max(3, Math.abs(liveRightShoulder.x - liveLeftShoulder.x) / 24)
+    : width * 0.014;
+  const project = ([x, y]) => ({ x: center.x + (x - 50) * unit, y: center.y + (y - 42) * unit });
+  const points = Object.fromEntries(Object.entries({ head: [50, 16], leftShoulder: [38, 42], rightShoulder: [62, 42], ...pose })
+    .map(([name, point]) => [name, project(point)]));
+  const actionLandmarks = { leftElbow: 13, leftWrist: 15, rightElbow: 14, rightWrist: 16 };
+  const matchRadius = Math.max(width * 0.028, unit * 4.6);
+  const matchedPoints = Object.fromEntries(Object.entries(actionLandmarks).map(([name, index]) => {
+    if (!canFollowPlayer || !pointsAreReliable(landmarks, [index])) return [name, false];
+    const live = canvasPoint(index);
+    return [name, Math.hypot(live.x - points[name].x, live.y - points[name].y) < matchRadius];
+  }));
+  return { points, matchedPoints, matchRadius };
+}
+
+function drawTargetGuide(context, width, height, target, landmarks) {
+  const guide = getTargetGuide(width, height, target, landmarks);
+  if (!guide) return null;
+  const { points } = guide;
   const connections = [
     ['head', 'leftShoulder'], ['head', 'rightShoulder'], ['leftShoulder', 'rightShoulder'],
     ['leftShoulder', 'leftElbow'], ['leftElbow', 'leftWrist'], ['rightShoulder', 'rightElbow'], ['rightElbow', 'rightWrist'],
-    ['leftShoulder', 'leftHip'], ['rightShoulder', 'rightHip'], ['leftHip', 'rightHip'],
   ];
   context.save();
   context.strokeStyle = 'rgba(132, 196, 217, .72)';
-  context.fillStyle = 'rgba(167, 220, 235, .78)';
   context.lineWidth = Math.max(8, width * 0.014);
   context.lineCap = 'round';
   context.lineJoin = 'round';
   context.setLineDash([10, 12]);
   context.beginPath();
   connections.forEach(([from, to]) => {
-    const [x1, y1] = at(points[from]);
-    const [x2, y2] = at(points[to]);
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
+    context.moveTo(points[from].x, points[from].y);
+    context.lineTo(points[to].x, points[to].y);
   });
   context.stroke();
   context.setLineDash([]);
-  Object.values(points).forEach((point) => {
-    const [x, y] = at(point);
+  Object.values(points).forEach(({ x, y }) => {
     context.beginPath();
     context.arc(x, y, width * 0.016, 0, Math.PI * 2);
+    context.fillStyle = 'rgba(167, 220, 235, .78)';
     context.fill();
   });
   context.font = `500 ${Math.max(12, width * 0.022)}px 'DM Mono', monospace`;
   context.fillStyle = 'rgba(190, 232, 242, .92)';
   context.fillText(`目标雕像：${target.title}`, width * 0.04, height * 0.08);
+  context.restore();
+  return guide;
+}
+
+function drawGuidePointHighlights(context, width, guide) {
+  if (!guide) return;
+  context.save();
+  Object.entries(guide.matchedPoints).forEach(([name, matched]) => {
+    if (!matched) return;
+    const { x, y } = guide.points[name];
+    context.shadowColor = 'rgba(255, 255, 255, .95)';
+    context.shadowBlur = 24;
+    context.fillStyle = '#ffffff';
+    context.beginPath();
+    context.arc(x, y, Math.max(width * 0.021, guide.matchRadius * 0.74), 0, Math.PI * 2);
+    context.fill();
+  });
   context.restore();
 }
 
@@ -127,7 +163,7 @@ function drawShadow(canvas, landmarks, isMatching = false, target = TARGETS[0]) 
   const context = canvas.getContext('2d');
   const { width, height } = canvas;
   context.clearRect(0, 0, width, height);
-  drawTargetGuide(context, width, height, target);
+  const guide = drawTargetGuide(context, width, height, target, landmarks);
 
   if (!landmarks) return;
   const point = (index) => {
@@ -164,6 +200,7 @@ function drawShadow(canvas, landmarks, isMatching = false, target = TARGETS[0]) 
     context.fill();
   });
   context.restore();
+  drawGuidePointHighlights(context, width, guide);
 }
 
 function TargetPoseIcon({ target }) {
@@ -326,7 +363,7 @@ export function PoseShadowDemo() {
         <div className="task-copy">
           <p className="task-kicker">当前伪装任务 · {targetIndex + 1} / {TARGETS.length}</p>
           <h2>{TARGETS[targetIndex].title}</h2>
-          <p>{TARGETS[targetIndex].description} 目标轮廓也会叠加在右侧画布中，方便直接对照。</p>
+          <p>{TARGETS[targetIndex].description} 目标轮廓会按你的坐姿尺度叠加在右侧画布中；对齐的手肘或手腕点会亮起白光。</p>
         </div>
         <div className="hold-meter" aria-label={`Pose hold progress: ${Math.round(holdProgress)} percent`}>
           <div className="hold-meter-label"><span>{holdProgress > 0 ? '保持姿势中' : '等待匹配'}</span><strong>{Math.ceil(holdProgress / 100 * 3)} / 3 秒</strong></div>
@@ -368,7 +405,7 @@ export function PoseShadowDemo() {
         <h2>试玩方法</h2>
         <ol>
           <li>允许摄像头权限，并确保头部、肩膀、手肘和手腕都在画面内。</li>
-          <li>右侧画布中的淡蓝虚线是目标动作；让你的发光影子与它对齐。影子变绿后，持续保持到进度条填满。</li>
+          <li>右侧画布中的淡蓝虚线是目标动作；它会随你的头肩位置缩放。手肘或手腕对齐时，对应目标点会亮起白光；影子变绿后，持续保持到进度条填满。</li>
           <li>每次完成会自动切换下一项任务；画面为镜像显示，且一次只追踪一人。</li>
         </ol>
       </section>

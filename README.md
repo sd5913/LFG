@@ -55,7 +55,7 @@ These are planned technologies and do not indicate that a working implementation
 
 ### Pose Shadow Lab prototype
 
-The first working interaction is at the root page. Select **Start camera**, grant camera permission, and move your head, shoulders, arms, or hands. MediaPipe Pose Landmarker detects one upper body and renders a mirrored 2D skeletal shadow in real time. The prototype gives compact, chest-level statue-inspired target poses (prayer, holding a scroll, contemplation, or crossed arms); a dashed target silhouette is drawn directly in the 2D shadow canvas so the player can align their live skeleton to it. Keep a matching pose continuously for three seconds to clear it and move to the next task.
+The first working interaction is at the root page. Select **Start camera**, grant camera permission, and move your head, shoulders, arms, or hands. MediaPipe Pose Landmarker detects one upper body and renders a mirrored 2D skeletal shadow in real time. The prototype gives compact, chest-level statue-inspired target poses (prayer, holding a scroll, contemplation, or crossed arms); a dashed target silhouette is drawn directly in the 2D shadow canvas and scales to the player's live head-and-shoulder position. Each target elbow or wrist point turns white with a glow when its live counterpart aligns. Keep a matching pose continuously for three seconds to clear it and move to the next task.
 
 - Camera frames and landmarks are processed in the browser and are not recorded or uploaded by this demo.
 - The MediaPipe task model is downloaded from Google's public model hosting on first use, and the browser library is loaded from jsDelivr; an internet connection is therefore needed for the first run.
