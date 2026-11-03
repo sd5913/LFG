@@ -15,24 +15,24 @@ const HOLD_DURATION_MS = 3000;
 
 const TARGETS = [
   {
-    id: 'arms-out',
-    title: '双臂展开',
-    description: '双臂向两侧展开，手腕大致与肩膀同高。',
+    id: 'hands-at-waist',
+    title: '守护藏品',
+    description: '双手在腰前靠近，像小心捧住一件展品。',
   },
   {
-    id: 'left-arm-up',
-    title: '左手举高',
-    description: '把你的左手举到左肩上方。',
+    id: 'hands-in-prayer',
+    title: '祈祷雕像',
+    description: '双手在胸前合拢，手腕彼此靠近。',
   },
   {
-    id: 'right-arm-up',
-    title: '右手举高',
-    description: '把你的右手举到右肩上方。',
+    id: 'hand-at-chin',
+    title: '沉思者',
+    description: '将右手靠近下巴，保持安静思考的姿势。',
   },
   {
-    id: 'hands-crossed',
-    title: '双手交叉',
-    description: '在胸前交叉双手，让两个手腕靠近。',
+    id: 'arms-crossed',
+    title: '庄严交臂',
+    description: '在胸前交叠双臂，双手分别靠近另一侧肩膀。',
   },
 ];
 
@@ -41,7 +41,7 @@ function pointsAreReliable(landmarks, indexes) {
 }
 
 function isTargetPose(landmarks, targetId) {
-  if (!landmarks || !pointsAreReliable(landmarks, [11, 12, 13, 14, 15, 16, 23, 24])) return false;
+  if (!landmarks || !pointsAreReliable(landmarks, [0, 11, 12, 13, 14, 15, 16, 23, 24])) return false;
 
   const leftShoulder = landmarks[11];
   const rightShoulder = landmarks[12];
@@ -52,25 +52,21 @@ function isTargetPose(landmarks, targetId) {
   const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x);
   const shoulderMiddleY = (leftShoulder.y + rightShoulder.y) / 2;
   const hipMiddleY = (landmarks[23].y + landmarks[24].y) / 2;
-  const armIsRaised = (shoulder, elbow, wrist) =>
-    wrist.y < shoulder.y - Math.max(0.09, shoulderWidth * 0.3) && elbow.y < shoulder.y + 0.08;
+  const wristDistance = Math.hypot(leftWrist.x - rightWrist.x, leftWrist.y - rightWrist.y);
+  const wristMiddleY = (leftWrist.y + rightWrist.y) / 2;
+  const closeHands = wristDistance < Math.max(0.15, shoulderWidth * 0.8);
 
   switch (targetId) {
-    case 'arms-out':
-      return Math.abs(leftWrist.y - leftShoulder.y) < 0.16
-        && Math.abs(rightWrist.y - rightShoulder.y) < 0.16
-        && Math.abs(leftWrist.x - rightWrist.x) > shoulderWidth * 2.15;
-    case 'left-arm-up':
-      return armIsRaised(leftShoulder, leftElbow, leftWrist);
-    case 'right-arm-up':
-      return armIsRaised(rightShoulder, rightElbow, rightWrist);
-    case 'hands-crossed': {
-      const wristDistance = Math.hypot(leftWrist.x - rightWrist.x, leftWrist.y - rightWrist.y);
-      const wristMiddleY = (leftWrist.y + rightWrist.y) / 2;
-      return wristDistance < Math.max(0.15, shoulderWidth * 0.8)
-        && wristMiddleY > shoulderMiddleY - 0.04
-        && wristMiddleY < hipMiddleY + 0.06;
-    }
+    case 'hands-at-waist':
+      return closeHands && wristMiddleY > shoulderMiddleY + 0.24 && wristMiddleY < hipMiddleY + 0.1;
+    case 'hands-in-prayer':
+      return closeHands && wristMiddleY > shoulderMiddleY - 0.02 && wristMiddleY < shoulderMiddleY + 0.25;
+    case 'hand-at-chin':
+      return Math.hypot(rightWrist.x - landmarks[0].x, rightWrist.y - landmarks[0].y) < Math.max(0.16, shoulderWidth * 0.8)
+        && rightElbow.y > rightShoulder.y - 0.02;
+    case 'arms-crossed':
+      return Math.hypot(leftWrist.x - rightShoulder.x, leftWrist.y - rightShoulder.y) < Math.max(0.17, shoulderWidth * 0.85)
+        && Math.hypot(rightWrist.x - leftShoulder.x, rightWrist.y - leftShoulder.y) < Math.max(0.17, shoulderWidth * 0.85);
     default:
       return false;
   }
@@ -120,10 +116,10 @@ function drawShadow(canvas, landmarks, isMatching = false) {
 
 function TargetPoseIcon({ target }) {
   const poses = {
-    'arms-out': { leftElbow: [24, 53], leftWrist: [8, 53], rightElbow: [76, 53], rightWrist: [92, 53] },
-    'left-arm-up': { leftElbow: [29, 30], leftWrist: [27, 10], rightElbow: [76, 66], rightWrist: [87, 82] },
-    'right-arm-up': { leftElbow: [71, 30], leftWrist: [73, 10], rightElbow: [24, 66], rightWrist: [13, 82] },
-    'hands-crossed': { leftElbow: [37, 61], leftWrist: [58, 68], rightElbow: [63, 61], rightWrist: [42, 68] },
+    'hands-at-waist': { leftElbow: [37, 62], leftWrist: [47, 79], rightElbow: [63, 62], rightWrist: [53, 79] },
+    'hands-in-prayer': { leftElbow: [38, 59], leftWrist: [48, 62], rightElbow: [62, 59], rightWrist: [52, 62] },
+    'hand-at-chin': { leftElbow: [37, 64], leftWrist: [28, 79], rightElbow: [67, 49], rightWrist: [57, 25] },
+    'arms-crossed': { leftElbow: [38, 59], leftWrist: [61, 47], rightElbow: [62, 59], rightWrist: [39, 47] },
   };
   const pose = poses[target.id];
   const lines = [[50, 21, 38, 45], [50, 21, 62, 45], [38, 45, pose.leftElbow[0], pose.leftElbow[1]], [pose.leftElbow[0], pose.leftElbow[1], pose.leftWrist[0], pose.leftWrist[1]], [62, 45, pose.rightElbow[0], pose.rightElbow[1]], [pose.rightElbow[0], pose.rightElbow[1], pose.rightWrist[0], pose.rightWrist[1]], [38, 45, 42, 86], [62, 45, 58, 86], [42, 86, 58, 86]];
