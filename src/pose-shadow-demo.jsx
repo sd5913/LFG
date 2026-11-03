@@ -12,11 +12,10 @@ const UPPER_BODY = [
 ];
 const JOINTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24];
 const HOLD_DURATION_MS = 3000;
-const TARGET_POSE_POINTS = {
-  'hands-in-prayer': { leftElbow: [38, 55], leftWrist: [48, 58], rightElbow: [62, 55], rightWrist: [52, 58] },
-  'holding-scroll': { leftElbow: [35, 58], leftWrist: [43, 64], rightElbow: [65, 58], rightWrist: [57, 64] },
-  'hand-at-chin': { leftElbow: [37, 61], leftWrist: [29, 71], rightElbow: [67, 48], rightWrist: [57, 26] },
-  'arms-crossed': { leftElbow: [38, 57], leftWrist: [61, 46], rightElbow: [62, 57], rightWrist: [39, 46] },
+const TARGET_ARM_CONFIGS = {
+  'hands-in-prayer': { upper: [0.18, 1], forearm: [-0.88, 0.48] },
+  'holding-scroll': { upper: [0.05, 1], forearm: [-0.62, 0.38] },
+  'arms-crossed': { upper: [-0.6, 0.8], forearm: [-0.85, 0.25] },
 };
 
 const TARGETS = [
@@ -31,11 +30,6 @@ const TARGETS = [
     description: '双手在胸前微微分开，像捧着一卷珍贵文物。',
   },
   {
-    id: 'hand-at-chin',
-    title: '沉思者',
-    description: '将右手靠近下巴，保持安静思考的姿势。',
-  },
-  {
     id: 'arms-crossed',
     title: '庄严交臂',
     description: '在胸前交叠双臂，双手分别靠近另一侧肩膀。',
@@ -46,67 +40,48 @@ function pointsAreReliable(landmarks, indexes) {
   return indexes.every((index) => landmarks[index]?.visibility == null || landmarks[index].visibility > 0.45);
 }
 
-function isTargetPose(landmarks, targetId) {
-  if (!landmarks || !pointsAreReliable(landmarks, [0, 11, 12, 13, 14, 15, 16, 23, 24])) return false;
-
-  const leftShoulder = landmarks[11];
-  const rightShoulder = landmarks[12];
-  const leftElbow = landmarks[13];
-  const rightElbow = landmarks[14];
-  const leftWrist = landmarks[15];
-  const rightWrist = landmarks[16];
-  const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x);
-  const shoulderMiddleY = (leftShoulder.y + rightShoulder.y) / 2;
-  const hipMiddleY = (landmarks[23].y + landmarks[24].y) / 2;
-  const wristDistance = Math.hypot(leftWrist.x - rightWrist.x, leftWrist.y - rightWrist.y);
-  const wristMiddleY = (leftWrist.y + rightWrist.y) / 2;
-  const closeHands = wristDistance < Math.max(0.15, shoulderWidth * 0.8);
-
-  switch (targetId) {
-    case 'hands-in-prayer':
-      return closeHands && wristMiddleY > shoulderMiddleY - 0.02 && wristMiddleY < shoulderMiddleY + 0.25;
-    case 'holding-scroll':
-      return wristDistance > Math.max(0.11, shoulderWidth * 0.48)
-        && wristDistance < shoulderWidth * 1.45
-        && wristMiddleY > shoulderMiddleY + 0.02
-        && wristMiddleY < hipMiddleY - 0.08
-        && leftElbow.y < hipMiddleY - 0.02
-        && rightElbow.y < hipMiddleY - 0.02;
-    case 'hand-at-chin':
-      return Math.hypot(rightWrist.x - landmarks[0].x, rightWrist.y - landmarks[0].y) < Math.max(0.16, shoulderWidth * 0.8)
-        && rightElbow.y > rightShoulder.y - 0.02;
-    case 'arms-crossed':
-      return Math.hypot(leftWrist.x - rightShoulder.x, leftWrist.y - rightShoulder.y) < Math.max(0.17, shoulderWidth * 0.85)
-        && Math.hypot(rightWrist.x - leftShoulder.x, rightWrist.y - leftShoulder.y) < Math.max(0.17, shoulderWidth * 0.85);
-    default:
-      return false;
-  }
-}
-
 function getTargetGuide(width, height, target, landmarks) {
-  const pose = TARGET_POSE_POINTS[target.id];
-  if (!pose) return null;
+  const config = TARGET_ARM_CONFIGS[target.id];
+  if (!config || !landmarks || !pointsAreReliable(landmarks, [0, 7, 8, 11, 12, 13, 14, 15, 16])) return null;
   const canvasPoint = (index) => ({ x: (1 - landmarks[index].x) * width, y: landmarks[index].y * height });
-  const canFollowPlayer = landmarks && pointsAreReliable(landmarks, [0, 11, 12]);
-  const liveLeftShoulder = canFollowPlayer ? canvasPoint(11) : null;
-  const liveRightShoulder = canFollowPlayer ? canvasPoint(12) : null;
-  const center = canFollowPlayer
-    ? { x: (liveLeftShoulder.x + liveRightShoulder.x) / 2, y: (liveLeftShoulder.y + liveRightShoulder.y) / 2 }
-    : { x: width / 2, y: height * 0.48 };
-  const unit = canFollowPlayer
-    ? Math.max(3, Math.abs(liveRightShoulder.x - liveLeftShoulder.x) / 24)
-    : width * 0.014;
-  const project = ([x, y]) => ({ x: center.x + (x - 50) * unit, y: center.y + (y - 42) * unit });
-  const points = Object.fromEntries(Object.entries({ head: [50, 16], leftShoulder: [38, 42], rightShoulder: [62, 42], ...pose })
-    .map(([name, point]) => [name, project(point)]));
+  const points = {
+    head: canvasPoint(0), leftEar: canvasPoint(7), rightEar: canvasPoint(8),
+    leftShoulder: canvasPoint(11), rightShoulder: canvasPoint(12),
+  };
+  if (pointsAreReliable(landmarks, [23, 24])) {
+    points.leftHip = canvasPoint(23);
+    points.rightHip = canvasPoint(24);
+  }
+  const shoulderCenter = { x: (points.leftShoulder.x + points.rightShoulder.x) / 2, y: (points.leftShoulder.y + points.rightShoulder.y) / 2 };
+  const shoulderWidth = Math.hypot(points.rightShoulder.x - points.leftShoulder.x, points.rightShoulder.y - points.leftShoulder.y);
+  const measuredUpperArm = (Math.hypot(points.leftShoulder.x - canvasPoint(13).x, points.leftShoulder.y - canvasPoint(13).y)
+    + Math.hypot(points.rightShoulder.x - canvasPoint(14).x, points.rightShoulder.y - canvasPoint(14).y)) / 2;
+  const measuredForearm = (Math.hypot(canvasPoint(13).x - canvasPoint(15).x, canvasPoint(13).y - canvasPoint(15).y)
+    + Math.hypot(canvasPoint(14).x - canvasPoint(16).x, canvasPoint(14).y - canvasPoint(16).y)) / 2;
+  const upperArmLength = Math.min(Math.max(measuredUpperArm, shoulderWidth * 0.42), shoulderWidth * 0.68);
+  const forearmLength = Math.min(Math.max(measuredForearm, shoulderWidth * 0.42), shoulderWidth * 0.68);
+  const unit = ([x, y]) => {
+    const length = Math.hypot(x, y);
+    return { x: x / length, y: y / length };
+  };
+  const createArm = (shoulder, side) => {
+    const upperDirection = unit([side * config.upper[0], config.upper[1]]);
+    const elbow = { x: shoulder.x + upperDirection.x * upperArmLength, y: shoulder.y + upperDirection.y * upperArmLength };
+    const forearmDirection = unit([side * config.forearm[0], config.forearm[1]]);
+    return { elbow, wrist: { x: elbow.x + forearmDirection.x * forearmLength, y: elbow.y + forearmDirection.y * forearmLength } };
+  };
+  const leftSide = Math.sign(points.leftShoulder.x - shoulderCenter.x) || -1;
+  const rightSide = Math.sign(points.rightShoulder.x - shoulderCenter.x) || 1;
+  const leftArm = createArm(points.leftShoulder, leftSide);
+  const rightArm = createArm(points.rightShoulder, rightSide);
+  Object.assign(points, { leftElbow: leftArm.elbow, leftWrist: leftArm.wrist, rightElbow: rightArm.elbow, rightWrist: rightArm.wrist });
   const actionLandmarks = { leftElbow: 13, leftWrist: 15, rightElbow: 14, rightWrist: 16 };
-  const matchRadius = Math.max(width * 0.028, unit * 4.6);
+  const matchRadius = Math.max(20, shoulderWidth * 0.3);
   const matchedPoints = Object.fromEntries(Object.entries(actionLandmarks).map(([name, index]) => {
-    if (!canFollowPlayer || !pointsAreReliable(landmarks, [index])) return [name, false];
     const live = canvasPoint(index);
     return [name, Math.hypot(live.x - points[name].x, live.y - points[name].y) < matchRadius];
   }));
-  return { points, matchedPoints, matchRadius };
+  return { points, matchedPoints, matchRadius, isMatched: Object.values(matchedPoints).every(Boolean) };
 }
 
 function drawTargetGuide(context, width, height, target, landmarks) {
@@ -114,8 +89,9 @@ function drawTargetGuide(context, width, height, target, landmarks) {
   if (!guide) return null;
   const { points } = guide;
   const connections = [
-    ['head', 'leftShoulder'], ['head', 'rightShoulder'], ['leftShoulder', 'rightShoulder'],
+    ['head', 'leftEar'], ['head', 'rightEar'], ['leftEar', 'leftShoulder'], ['rightEar', 'rightShoulder'], ['leftShoulder', 'rightShoulder'],
     ['leftShoulder', 'leftElbow'], ['leftElbow', 'leftWrist'], ['rightShoulder', 'rightElbow'], ['rightElbow', 'rightWrist'],
+    ['leftShoulder', 'leftHip'], ['rightShoulder', 'rightHip'], ['leftHip', 'rightHip'],
   ];
   context.save();
   context.strokeStyle = 'rgba(132, 196, 217, .72)';
@@ -125,12 +101,13 @@ function drawTargetGuide(context, width, height, target, landmarks) {
   context.setLineDash([10, 12]);
   context.beginPath();
   connections.forEach(([from, to]) => {
+    if (!points[from] || !points[to]) return;
     context.moveTo(points[from].x, points[from].y);
     context.lineTo(points[to].x, points[to].y);
   });
   context.stroke();
   context.setLineDash([]);
-  Object.values(points).forEach(({ x, y }) => {
+  Object.values(points).filter(Boolean).forEach(({ x, y }) => {
     context.beginPath();
     context.arc(x, y, width * 0.016, 0, Math.PI * 2);
     context.fillStyle = 'rgba(167, 220, 235, .78)';
@@ -159,11 +136,12 @@ function drawGuidePointHighlights(context, width, guide) {
   context.restore();
 }
 
-function drawShadow(canvas, landmarks, isMatching = false, target = TARGETS[0]) {
+function drawShadow(canvas, landmarks, isMatching = false, target = TARGETS[0], guide) {
   const context = canvas.getContext('2d');
   const { width, height } = canvas;
   context.clearRect(0, 0, width, height);
-  const guide = drawTargetGuide(context, width, height, target, landmarks);
+  const activeGuide = guide ?? drawTargetGuide(context, width, height, target, landmarks);
+  if (guide) drawTargetGuide(context, width, height, target, landmarks);
 
   if (!landmarks) return;
   const point = (index) => {
@@ -200,19 +178,7 @@ function drawShadow(canvas, landmarks, isMatching = false, target = TARGETS[0]) 
     context.fill();
   });
   context.restore();
-  drawGuidePointHighlights(context, width, guide);
-}
-
-function TargetPoseIcon({ target }) {
-  const pose = TARGET_POSE_POINTS[target.id];
-  const lines = [[50, 21, 38, 45], [50, 21, 62, 45], [38, 45, pose.leftElbow[0], pose.leftElbow[1]], [pose.leftElbow[0], pose.leftElbow[1], pose.leftWrist[0], pose.leftWrist[1]], [62, 45, pose.rightElbow[0], pose.rightElbow[1]], [pose.rightElbow[0], pose.rightElbow[1], pose.rightWrist[0], pose.rightWrist[1]], [38, 45, 42, 86], [62, 45, 58, 86], [42, 86, 58, 86]];
-  return (
-    <svg className="target-icon" viewBox="0 0 100 100" aria-label={`${target.title} target pose`} role="img">
-      <circle cx="50" cy="12" r="9" />
-      {lines.map(([x1, y1, x2, y2], index) => <line key={index} x1={x1} y1={y1} x2={x2} y2={y2} />)}
-      {[pose.leftWrist, pose.rightWrist].map(([cx, cy], index) => <circle key={index} cx={cx} cy={cy} r="4.7" />)}
-    </svg>
-  );
+  drawGuidePointHighlights(context, width, activeGuide);
 }
 
 export function PoseShadowDemo() {
@@ -258,8 +224,9 @@ export function PoseShadowDemo() {
       const result = landmarker.detectForVideo(video, performance.now());
       const landmarks = result.landmarks[0];
       const target = TARGETS[targetIndexRef.current];
-      const matching = isTargetPose(landmarks, target.id);
-      drawShadow(canvas, landmarks, matching, target);
+      const guide = getTargetGuide(canvas.width, canvas.height, target, landmarks);
+      const matching = Boolean(guide?.isMatched);
+      drawShadow(canvas, landmarks, matching, target, guide);
       setPoseFound(Boolean(landmarks));
       if (!landmarks) {
         holdStartedAtRef.current = null;
@@ -359,11 +326,10 @@ export function PoseShadowDemo() {
       </header>
 
       <section className="task-panel" aria-label="Current pose task">
-        <TargetPoseIcon target={TARGETS[targetIndex]} />
         <div className="task-copy">
           <p className="task-kicker">当前伪装任务 · {targetIndex + 1} / {TARGETS.length}</p>
           <h2>{TARGETS[targetIndex].title}</h2>
-          <p>{TARGETS[targetIndex].description} 目标轮廓会按你的坐姿尺度叠加在右侧画布中；对齐的手肘或手腕点会亮起白光。</p>
+          <p>{TARGETS[targetIndex].description} 目标与实时映射使用完全相同的关节和骨架结构；每个手肘、手腕落入目标点周围约 30% 肩宽的容差范围时会亮起白光。</p>
         </div>
         <div className="hold-meter" aria-label={`Pose hold progress: ${Math.round(holdProgress)} percent`}>
           <div className="hold-meter-label"><span>{holdProgress > 0 ? '保持姿势中' : '等待匹配'}</span><strong>{Math.ceil(holdProgress / 100 * 3)} / 3 秒</strong></div>
@@ -405,7 +371,7 @@ export function PoseShadowDemo() {
         <h2>试玩方法</h2>
         <ol>
           <li>允许摄像头权限，并确保头部、肩膀、手肘和手腕都在画面内。</li>
-          <li>右侧画布中的淡蓝虚线是目标动作；它会随你的头肩位置缩放。手肘或手腕对齐时，对应目标点会亮起白光；影子变绿后，持续保持到进度条填满。</li>
+          <li>右侧画布中的淡蓝虚线是目标动作；它会随你的头肩位置缩放。手肘或手腕进入目标点周围约 30% 肩宽的范围时，对应点会亮起白光；影子变绿后，持续保持到进度条填满。</li>
           <li>每次完成会自动切换下一项任务；画面为镜像显示，且一次只追踪一人。</li>
         </ol>
       </section>
