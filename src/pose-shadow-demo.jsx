@@ -16,7 +16,7 @@ const JITTER_GRACE_MS = 220;
 const TARGET_ARM_CONFIGS = {
   'hands-at-heart': { upper: [0, 0.9], forearm: [-0.85, -0.2] },
   'holding-scroll': { upper: [0.05, 1], forearm: [-0.62, 0.38] },
-  'arms-crossed': { upper: [-0.6, 0.8], forearm: [-0.85, 0.25] },
+  'hand-on-head': { upper: [0.55, -0.5], forearm: [-0.55, -0.8], required: ['rightElbow', 'rightWrist'] },
 };
 
 const TARGETS = [
@@ -31,9 +31,9 @@ const TARGETS = [
     description: '双手在胸前微微分开，像捧着一卷珍贵文物。',
   },
   {
-    id: 'arms-crossed',
-    title: '庄严交臂',
-    description: '在胸前交叠双臂，双手分别靠近另一侧肩膀。',
+    id: 'hand-on-head',
+    title: '抚额雕像',
+    description: '抬起右臂，让右手自然扶在头部一侧，像一尊正在思考的雕像。',
   },
 ];
 
@@ -79,12 +79,16 @@ function getTargetGuide(width, height, target, landmarks) {
   };
   const leftSide = Math.sign(points.leftShoulder.x - shoulderCenter.x) || -1;
   const rightSide = Math.sign(points.rightShoulder.x - shoulderCenter.x) || 1;
-  const leftArm = createArm(points.leftShoulder, leftSide);
+  const leftArm = config.required
+    ? { elbow: canvasPoint(13), wrist: canvasPoint(15) }
+    : createArm(points.leftShoulder, leftSide);
   const rightArm = createArm(points.rightShoulder, rightSide);
   Object.assign(points, { leftElbow: leftArm.elbow, leftWrist: leftArm.wrist, rightElbow: rightArm.elbow, rightWrist: rightArm.wrist });
   const actionLandmarks = { leftElbow: 13, leftWrist: 15, rightElbow: 14, rightWrist: 16 };
   const matchRadius = Math.max(28, shoulderWidth * 0.46);
-  const matchedPoints = Object.fromEntries(Object.entries(actionLandmarks).map(([name, index]) => {
+  const requiredNames = config.required ?? Object.keys(actionLandmarks);
+  const matchedPoints = Object.fromEntries(requiredNames.map((name) => {
+    const index = actionLandmarks[name];
     const live = canvasPoint(index);
     return [name, Math.hypot(live.x - points[name].x, live.y - points[name].y) < matchRadius];
   }));
