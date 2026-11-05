@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Museum Heist 资源拼装预览</title>
+<style>
+  body{margin:0;background:#0e202a;color:#e8dbc0;font:16px/1.5 "Microsoft YaHei",sans-serif}
+  main{max-width:1672px;margin:20px auto;padding:0 12px}
+  canvas{display:block;width:100%;height:auto;border:2px solid #50616a;image-rendering:pixelated;background:#243c48}
+  p{margin:10px 0;color:#aec0ba}
+</style>
+</head>
+<body><main><canvas id="game" width="1672" height="941"></canvas><p>资源拼装预览：WASD / 方向键移动怪盗，P 查看姿势挑战层。此预览展示素材叠放与坐标，姿势识别和完整游戏规则需接入项目代码。</p></main>
+<script>
+const canvas=document.querySelector('#game'), ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const files={background:'background/museum-hall.png',thief:'sprites/thief-right.png',guard:'sprites/guard-right.png',vase:'sprites/case-vase.png',crown:'sprites/case-crown.png',cameo:'sprites/case-cameo.png',necklace:'sprites/case-necklace.png',painting:'sprites/treasure-painting.png',cone:'ui/vision-cone.svg',alarm:'ui/alarm-icon.svg',treasure:'ui/treasure-icon.svg',route:'ui/route-progress.svg',target:'ui/pose-arms-out.svg',tracking:'ui/pose-tracking.svg',panel:'ui/pose-panel.svg',camera:'ui/camera-frame.svg',warning:'ui/warning-banner.svg',progress:'ui/progress-frame.svg',fill:'ui/progress-fill.svg'};
+const images={}, keys=new Set(); let loaded=0;
+for(const [k,src] of Object.entries(files)){const im=new Image();im.onload=()=>loaded++;im.src=src;images[k]=im;}
+const objects=[
+  {key:'vase',x:267,y:264,w:282,h:174,b:[283,164,1105,642]},
+  {key:'crown',x:904,y:290,w:250,h:159,b:[284,146,1104,682]},
+  {key:'cameo',x:416,y:551,w:255,h:177,b:[184,179,1189,735]},
+  {key:'necklace',x:951,y:620,w:276,h:171,b:[214,96,1346,748]},
+  {key:'painting',x:1376,y:136,w:219,h:170,b:[128,139,1130,860]}
+];
+const player={x:165,y:687,w:145,h:155,b:[204,129,788,926]};
+const guard={x:1050,y:466,w:110,h:151,b:[323,146,602,960]};
+const obstacles=[[281,290,254,137],[916,311,225,132],[430,578,227,142],[965,646,250,139],[676,380,106,228],[204,490,196,83],[1505,511,85,145]];
+let alarm=.4,pose=false,last=performance.now();
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys.add(k);if(k==='p'&&!e.repeat)pose=!pose;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+function hit(a,b){return a[0]<b[0]+b[2]&&a[0]+a[2]>b[0]&&a[1]<b[1]+b[3]&&a[1]+a[3]>b[1]}
+function canMove(x,y){const feet=[x+38,y+109,67,40];return x>45&&y>95&&x+player.w<1622&&y+player.h<913&&!obstacles.some(o=>hit(feet,o))}
+function sprite(key,b,x,y,w,h){const im=images[key];if(im?.complete&&im.naturalWidth)ctx.drawImage(im,...b,x,y,w,h)}
+function text(s,x,y,size=25,color='#f0dfbd',align='left'){ctx.fillStyle=color;ctx.font=`bold ${size}px Consolas, "Microsoft YaHei", sans-serif`;ctx.textAlign=align;ctx.fillText(s,x,y)}
+function draw(t){const dt=Math.min((t-last)/1000,.05);last=t;ctx.imageSmoothingEnabled=false;
+  if(!pose){let dx=0,dy=0;if(keys.has('a')||keys.has('arrowleft'))dx--;if(keys.has('d')||keys.has('arrowright'))dx++;if(keys.has('w')||keys.has('arrowup'))dy--;if(keys.has('s')||keys.has('arrowdown'))dy++;const len=Math.hypot(dx,dy)||1;dx=dx/len*230*dt;dy=dy/len*230*dt;if(canMove(player.x+dx,player.y))player.x+=dx;if(canMove(player.x,player.y+dy))player.y+=dy;}
+  ctx.drawImage(images.background,0,0,1672,941);
+  guard.x=1050+Math.sin(t/1800)*44;
+  if(images.cone.complete)ctx.drawImage(images.cone,guard.x+84,351,340,334);
+  for(const o of objects)sprite(o.key,o.b,o.x,o.y,o.w,o.h);
+  sprite('guard',guard.b,guard.x,guard.y,guard.w,guard.h);
+  sprite('thief',player.b,player.x,player.y,player.w,player.h);
+  const inCone=player.x+player.w/2>guard.x+95&&player.x+player.w/2<guard.x+425&&Math.abs(player.y+player.h/2-(guard.y+76))<((player.x+player.w/2)-(guard.x+95))*.49;
+  if(!pose)alarm=Math.max(0,Math.min(1,alarm+(inCone?.18:-.025)*dt));
+  ctx.fillStyle='#102331';ctx.fillRect(0,0,1672,88);ctx.fillStyle='#526b75';ctx.fillRect(0,84,1672,5);
+  ctx.drawImage(images.alarm,63,9,60,60);text('警戒',165,35,27);text(`${Math.round(alarm*100)}%`,165,69,27);
+  ctx.fillStyle='#e8d2ae';ctx.fillRect(249,24,245,39);ctx.fillStyle='#152936';ctx.fillRect(255,30,233,27);
+  for(let i=0;i<5;i++){ctx.fillStyle=i<Math.ceil(alarm*5)?'#c78178':'#405665';ctx.fillRect(259+i*46,33,41,21)}
+  ctx.drawImage(images.route,732,21,490,45);ctx.drawImage(images.treasure,1315,14,62,62);
+  text('宝物距离',1406,52,27);const d=Math.max(0,Math.round(Math.hypot(1484-(player.x+72),230-(player.y+75))/50));text(`${d} m`,1642,56,46,'#e4bf82','right');
+  if(alarm>=1){ctx.fillStyle='rgba(13,32,44,.84)';ctx.fillRect(0,88,1672,853);text('被发现了 · 任务失败',836,475,55,'#e1a097','center')}
+  if(pose){ctx.fillStyle='rgba(7,20,30,.72)';ctx.fillRect(0,89,1672,852);ctx.drawImage(images.warning,190,128,1292,94);text('扫描灯靠近 · 伪装成雕像',303,188,43);text('05 秒',1430,188,40,'#f0dfbd','right');ctx.drawImage(images.panel,214,249,570,517);ctx.drawImage(images.panel,817,249,640,517);text('目标动作 02/04',267,308,32);text('展开双臂，保持不动',267,366,42);ctx.drawImage(images.target,322,404,360,330);text('你的姿势',871,308,32);ctx.drawImage(images.camera,870,334,535,290);ctx.drawImage(images.tracking,1000,369,260,230);text('姿势正确，继续保持',872,669,31);ctx.drawImage(images.progress,870,690,470,35);ctx.fillStyle='#9acbb5';ctx.fillRect(878,697,282,21);text('62%',1361,720,30);text('P 返回游戏',1480,835,24,'#d4b79c','right')}
+  requestAnimationFrame(draw);
+}
+Promise.all(Object.values(images).map(im=>im.decode().catch(()=>null))).then(()=>requestAnimationFrame(draw));
+</script></body></html>

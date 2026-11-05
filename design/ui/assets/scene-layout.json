@@ -1,0 +1,20 @@
+{
+  "canvas": { "width": 1672, "height": 941 },
+  "background": "background/museum-hall.png",
+  "coordinates": "Top-left x/y in the 1672x941 reference frame; draw only each PNG's alphaBounds into its placement.",
+  "objects": [
+    { "key": "case-vase", "x": 267, "y": 264, "width": 282, "height": 174, "collider": [281, 290, 254, 137], "cover": true },
+    { "key": "case-crown", "x": 904, "y": 290, "width": 250, "height": 159, "collider": [916, 311, 225, 132], "cover": true },
+    { "key": "case-cameo", "x": 416, "y": 551, "width": 255, "height": 177, "collider": [430, 578, 227, 142], "cover": true },
+    { "key": "case-necklace", "x": 951, "y": 620, "width": 276, "height": 171, "collider": [965, 646, 250, 139], "cover": true },
+    { "key": "treasure-painting", "x": 1376, "y": 136, "width": 219, "height": 170, "trigger": [1361, 303, 249, 75] },
+    { "key": "thief-right", "x": 165, "y": 687, "width": 145, "height": 155, "moveable": true },
+    { "key": "guard-right", "x": 1050, "y": 466, "width": 110, "height": 151, "moveable": true }
+  ],
+  "staticColliders": [
+    [0, 0, 52, 941], [1620, 0, 52, 941], [0, 0, 1672, 89], [0, 907, 1672, 34],
+    [676, 380, 106, 228], [204, 490, 196, 83], [1505, 511, 85, 145]
+  ],
+  "guardVision": { "asset": "ui/vision-cone.svg", "x": 1135, "y": 351, "width": 340, "height": 334, "origin": [0, 0.5] },
+  "hud": { "height": 88, "alarmSegments": 5, "alarmFailureAt": 1.0, "distanceUnit": "m" }
+}

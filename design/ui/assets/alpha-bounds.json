@@ -1,0 +1,145 @@
+{
+  "case-crown": {
+    "file": "sprites/case-crown.png",
+    "sourceSize": [
+      1672,
+      941
+    ],
+    "alphaBounds": [
+      284,
+      146,
+      1104,
+      682
+    ]
+  },
+  "guard-down": {
+    "file": "sprites/guard-down.png",
+    "sourceSize": [
+      1189,
+      1323
+    ],
+    "alphaBounds": [
+      305,
+      155,
+      578,
+      1020
+    ]
+  },
+  "treasure-painting": {
+    "file": "sprites/treasure-painting.png",
+    "sourceSize": [
+      1372,
+      1146
+    ],
+    "alphaBounds": [
+      128,
+      139,
+      1130,
+      860
+    ]
+  },
+  "guard-up": {
+    "file": "sprites/guard-up.png",
+    "sourceSize": [
+      1199,
+      1312
+    ],
+    "alphaBounds": [
+      288,
+      51,
+      622,
+      1210
+    ]
+  },
+  "thief-down": {
+    "file": "sprites/thief-down.png",
+    "sourceSize": [
+      1174,
+      1339
+    ],
+    "alphaBounds": [
+      210,
+      84,
+      642,
+      1188
+    ]
+  },
+  "guard-right": {
+    "file": "sprites/guard-right.png",
+    "sourceSize": [
+      1274,
+      1235
+    ],
+    "alphaBounds": [
+      323,
+      146,
+      602,
+      960
+    ]
+  },
+  "case-necklace": {
+    "file": "sprites/case-necklace.png",
+    "sourceSize": [
+      1774,
+      887
+    ],
+    "alphaBounds": [
+      214,
+      96,
+      1346,
+      748
+    ]
+  },
+  "thief-right": {
+    "file": "sprites/thief-right.png",
+    "sourceSize": [
+      1345,
+      1169
+    ],
+    "alphaBounds": [
+      204,
+      129,
+      788,
+      926
+    ]
+  },
+  "thief-up": {
+    "file": "sprites/thief-up.png",
+    "sourceSize": [
+      1199,
+      1312
+    ],
+    "alphaBounds": [
+      140,
+      116,
+      729,
+      1089
+    ]
+  },
+  "case-vase": {
+    "file": "sprites/case-vase.png",
+    "sourceSize": [
+      1671,
+      941
+    ],
+    "alphaBounds": [
+      283,
+      164,
+      1105,
+      642
+    ]
+  },
+  "case-cameo": {
+    "file": "sprites/case-cameo.png",
+    "sourceSize": [
+      1556,
+      1011
+    ],
+    "alphaBounds": [
+      184,
+      179,
+      1189,
+      735
+    ]
+  }
+}

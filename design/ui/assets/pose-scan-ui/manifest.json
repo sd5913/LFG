@@ -1,0 +1,38 @@
+{
+  "canvas": { "width": 1672, "height": 941 },
+  "transparentBackground": true,
+  "dimUnderlyingScene": { "x": 0, "y": 89, "width": 1672, "height": 852, "color": "#05131c", "opacity": 0.66 },
+  "parts": [
+    { "key": "hud-strip", "file": "hud-strip.svg", "rect": [0, 0, 1672, 89] },
+    { "key": "alarm-siren", "file": "alarm-siren.svg", "rect": [70, 6, 72, 65] },
+    { "key": "alarm-bar", "pattern": "alarm-{progress:000}.svg", "rect": [246, 22, 250, 43], "states": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] },
+    { "key": "route-track", "file": "route-track.svg", "rect": [733, 18, 490, 52] },
+    { "key": "route-museum-icon", "file": "route-museum-icon.svg", "rect": [744, 21, 48, 40] },
+    { "key": "route-player-marker", "file": "route-player-marker.svg", "rect": [947, 21, 48, 40], "moveableAlongX": [790, 1172] },
+    { "key": "treasure-icon", "file": "treasure-frame-icon.svg", "rect": [1314, 9, 65, 64] },
+    { "key": "warning-banner", "file": "warning-banner.svg", "rect": [190, 131, 1290, 90] },
+    { "key": "warning-icon", "file": "warning-icon.svg", "rect": [225, 143, 64, 64] },
+    { "key": "target-panel", "file": "target-panel.svg", "rect": [213, 248, 578, 520] },
+    { "key": "target-pose", "file": "target-pose-arms-out.svg", "rect": [305, 399, 390, 325] },
+    { "key": "tracking-panel", "file": "tracking-panel.svg", "rect": [814, 248, 644, 520] },
+    { "key": "camera-window", "file": "camera-window.svg", "rect": [857, 327, 562, 298] },
+    { "key": "tracking-pose", "file": "tracking-pose-arms-out.svg", "rect": [981, 354, 320, 260] },
+    { "key": "hold-bar", "pattern": "hold-{progress:000}.svg", "rect": [855, 686, 475, 48], "states": [0, 10, 20, 30, 40, 50, 60, 62, 70, 80, 90, 100] },
+    { "key": "footer-panel", "file": "footer-panel.svg", "rect": [206, 790, 1260, 68] }
+  ],
+  "liveText": [
+    { "key": "alarm-label", "text": "警戒", "x": 170, "y": 13 },
+    { "key": "alarm-percent", "example": "40%", "x": 170, "y": 46 },
+    { "key": "distance-label", "text": "宝物距离", "x": 1405, "y": 20 },
+    { "key": "distance-value", "example": "24 m", "x": 1538, "y": 14 },
+    { "key": "warning", "text": "扫描灯靠近 · 伪装成雕像", "x": 306, "y": 150 },
+    { "key": "countdown", "example": "05 秒", "x": 1305, "y": 150 },
+    { "key": "target-step", "example": "目标动作 02 / 04", "x": 261, "y": 279 },
+    { "key": "target-instruction", "text": "展开双臂，保持不动", "x": 263, "y": 330 },
+    { "key": "tracking-label", "text": "你的姿势", "x": 868, "y": 278 },
+    { "key": "tracking-feedback", "example": "姿势正确，继续保持", "x": 867, "y": 640 },
+    { "key": "hold-percent", "example": "62%", "x": 1349, "y": 691 },
+    { "key": "success", "text": "成功：获得安全窗口", "x": 247, "y": 813 },
+    { "key": "failure", "text": "失败：警戒上升", "x": 1186, "y": 813 }
+  ]
+}
