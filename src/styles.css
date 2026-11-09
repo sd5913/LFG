@@ -1,0 +1,56 @@
+:root { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #d9e3df; background: #091921; font-synthesis: none; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(ellipse at 50% 26%, #193541 0, #0b202a 47%, #08171e 100%); }
+button { font: inherit; }
+.workbench { width: min(1580px, 96vw, calc((100dvh - 190px) * 16 / 9)); margin: 0 auto; padding: 25px 0 16px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 2px 18px; }
+.identity { display: flex; align-items: center; gap: 14px; }
+.project-mark { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #6a7974; color: #e2c58f; font: 14px ui-monospace, monospace; box-shadow: inset 0 0 0 4px #122a33; }
+h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(19px, 2vw, 27px); font-weight: 500; letter-spacing: 0.02em; color: #ead6ae; }
+.identity p { margin: 5px 0 0; font-size: 11px; letter-spacing: .08em; color: #92a9ad; }
+.build-label { display: flex; align-items: center; gap: 9px; color: #8fa9ac; font: 10px ui-monospace, monospace; letter-spacing: .1em; }
+.build-label i { width: 6px; height: 6px; background: #c5a56e; }
+.stage-shell { position: relative; container-type: inline-size; aspect-ratio: 16 / 9; border: 1px solid #667b7d; outline: 5px solid #142b34; box-shadow: 0 20px 60px #0006, 0 0 0 6px #30434a; background: #0b202a; }
+.game-host { position: absolute; inset: 0; overflow: hidden; }
+.room-hud { position: absolute; top: 0; left: 0; right: 0; height: 9.4079%; pointer-events: none; color: #f3dcaa; font-family: ui-monospace, monospace; }
+.room-hud span { position: absolute; line-height: 1; white-space: nowrap; }
+.hud-title { left: 1.875%; top: 20%; font-size: clamp(7px, 1.6875cqw, 27px); font-weight: 700; }
+.hud-subtitle { left: 1.9375%; top: 64%; font-size: clamp(4px, .75cqw, 12px); color: #8facb6; }
+.hud-room { right: 1.75%; top: 27%; font-size: clamp(6px, 1.25cqw, 20px); }
+.hud-keys { right: 1.75%; top: 64%; font-size: clamp(4px, .8125cqw, 13px); color: #8facb6; }
+.hud-node { top: 70%; transform: translateX(-50%); font-size: clamp(4px, .8125cqw, 13px); color: #6b8994; }
+.hud-node.active { color: #f3dcaa; }
+.game-host canvas { display: block; image-rendering: crisp-edges; image-rendering: pixelated; outline: 0; }
+.stage-shell:focus-within { outline-color: #2c4549; }
+.loading-panel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: #0b202af5; text-align: center; }
+.panel-index { color: #d7b981; font: 14px monospace; letter-spacing: .2em; }
+.loading-panel p { max-width: 450px; font-size: 14px; line-height: 1.7; }
+.control-strip { min-height: 66px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-top: 17px; }
+.keyboard-help { display: flex; align-items: center; gap: 13px; }
+.keycaps { display: flex; gap: 4px; }
+kbd { display: grid; place-items: center; width: 25px; height: 27px; border: 1px solid #536d74; box-shadow: 0 2px 0 #263e47; color: #d9ccad; background: #172e38; font: 12px ui-monospace, monospace; }
+.keyboard-help p { margin: 0; font-size: 11px; }
+.keyboard-help p span { display: block; margin-top: 5px; font-size: 10px; color: #80999f; }
+.movement-status { margin: 0; color: #a4b9b7; font-size: 11px; }
+.tools { display: flex; gap: 8px; }
+button { min-height: 34px; padding: 7px 12px; border: 1px solid #52686a; background: #162d36; color: #d7d5c8; font-size: 11px; cursor: pointer; transition: background 150ms, border-color 150ms; }
+button span { padding-left: 7px; font: 10px monospace; color: #92a8a7; }
+button:hover { background: #29414a; border-color: #b6a57e; }
+button:focus-visible { outline: 2px solid #d8bb86; outline-offset: 3px; }
+button[aria-pressed="true"] { border-color: #c5a56e; color: #edcf94; }
+button:disabled { opacity: .45; cursor: wait; }
+.scope-note { margin: 8px 0 0; font-size: 10px; line-height: 1.5; color: #718c93; text-align: center; }
+@media (max-width: 760px) {
+  .workbench { width: 94vw; padding-top: 17px; }
+  .build-label { display: none; }
+  .page-header { padding-bottom: 16px; }
+  .control-strip { flex-wrap: wrap; gap: 14px; padding-top: 16px; }
+  .movement-status { order: 3; width: 100%; text-align: center; }
+  .keycaps { gap: 3px; }
+  kbd { width: 21px; height: 25px; }
+  button { min-height: 40px; padding: 6px 10px; }
+  .scope-note { margin-top: 12px; }
+}
+@media (max-width: 420px) { .keyboard-help p { display: none; } .tools { gap: 5px; } }
+@media (max-height: 550px) { .build-label { display: none; } .movement-status { order: 3; width: 100%; text-align: center; } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }

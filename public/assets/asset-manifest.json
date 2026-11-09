@@ -1,0 +1,50 @@
+﻿[
+    {
+        "source":  "../sucai/back.png",
+        "runtime":  "assets/room/back.png",
+        "width":  1670,
+        "height":  941,
+        "hasTransparentPixels":  false,
+        "sha256":  "d229df050787f25bb9913a297e53629d579450149461de229ea84d55bf5535e2"
+    },
+    {
+        "source":  "../sucai/image 46.png",
+        "runtime":  "assets/player/right.png",
+        "width":  680,
+        "height":  591,
+        "hasTransparentPixels":  true,
+        "sha256":  "b0d78ed0258ee85ec3309de250d1c8f25560598b2902a76ccbba83fb2bf058f0"
+    },
+    {
+        "source":  "../sucai/image 47.png",
+        "runtime":  "assets/player/down.png",
+        "width":  494,
+        "height":  563,
+        "hasTransparentPixels":  true,
+        "sha256":  "e33ed485edf2f33434e5b1459901a377e15a806ef6da62a6288f4e797426808f"
+    },
+    {
+        "source":  "../sucai/image 48.png",
+        "runtime":  "assets/player/up.png",
+        "width":  540,
+        "height":  591,
+        "hasTransparentPixels":  true,
+        "sha256":  "65829e20eaa5df1157820ecc4e36ab9e51627a7881f7bf77a590b6b210fd7ae9"
+    },
+    {
+        "source":  "../sucai/image 49.png",
+        "runtime":  "assets/player/left.png",
+        "width":  680,
+        "height":  591,
+        "hasTransparentPixels":  true,
+        "sha256":  "233fb92d695143d5d9f9650f6b303bb167b259ade895d36a0c05836e43b7b2da"
+    },
+    {
+        "source":  "../sucai/sculpture.png",
+        "runtime":  "assets/exhibits/sculpture.png",
+        "width":  1536,
+        "height":  1024,
+        "hasTransparentPixels":  true,
+        "sha256":  "1e6d21e7c159ce93378bd81e44d4847b0eb8d2ea6d9a65de70cb62bca68cf358"
+    }
+]

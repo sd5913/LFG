@@ -1,0 +1,10 @@
+# Credits — Museum Heist movement MVP
+
+- **Team-supplied artwork:** background, four directional thief PNGs and transparent sculpture/display-case artwork supplied in `assignment4/sucai`. Original names, actual direction mapping, dimensions and unchanged-file hashes are recorded in [ASSETS.md](ASSETS.md) and [asset-manifest.json](public/assets/asset-manifest.json). Art direction and reference composition were supplied by the team. No external icon set, font file or music is included.
+- **Phaser 3.90.0**, Phaser Studio / Photon Storm and contributors, MIT. [Official tagged source](https://github.com/phaserjs/phaser/tree/v3.90.0). Used for the Canvas scene, scaling, asset loading and Arcade collision system.
+- **React and React DOM 19.3.1**, Meta and contributors, MIT. [Official repository](https://github.com/facebook/react). Used for the surrounding UI, HUD labels and lifecycle.
+- **Vite 8.3.7**, Vite contributors, MIT. [Official repository](https://github.com/vitejs/vite). Used for local development and production bundling.
+- **ChatGPT / Codex:** assisted with reading the design briefs, source/alpha inspection, project setup, runtime sprite alignment, movement and collision implementation, UI, documentation and test execution. The user set the game concept, supplied assets and limited this pass to the movement MVP. AI is not a runtime game service.
+- **Built-in image_gen:** assisted with extracting the eight plants into a transparent alpha guide from the supplied background. Original room colour pixels are used for the actual foreground; the user requested pot-only collision and decorative foliage occlusion. See [the extraction prompt and record](docs/plant-foreground.md). No image-generation call occurs during play.
+
+No guard AI, live pose recognition or camera capture is implemented in this pass. No user-trial claims are inferred from automated or headless-browser checks.

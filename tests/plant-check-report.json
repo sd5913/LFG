@@ -1,0 +1,81 @@
+{
+  "errors": [],
+  "backgroundAlignment": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "changedPixels": 0
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "changedPixels": 0
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "changedPixels": 0
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "changedPixels": 0
+    }
+  ],
+  "plantStats": [
+    {
+      "id": "plant-nw",
+      "opaque": 11214,
+      "clear": 7482,
+      "depth": 252.33532934131742
+    },
+    {
+      "id": "plant-nw-inner",
+      "opaque": 12848,
+      "clear": 7017,
+      "depth": 227.42514970059887
+    },
+    {
+      "id": "plant-ne",
+      "opaque": 14220,
+      "clear": 9240,
+      "depth": 318.44311377245515
+    },
+    {
+      "id": "plant-centre",
+      "opaque": 23025,
+      "clear": 6499,
+      "depth": 581.9161676646706
+    },
+    {
+      "id": "plant-sw",
+      "opaque": 11695,
+      "clear": 9953,
+      "depth": 834.8502994011976
+    },
+    {
+      "id": "plant-south-west",
+      "opaque": 10290,
+      "clear": 6938,
+      "depth": 879.8802395209582
+    },
+    {
+      "id": "plant-south-east",
+      "opaque": 10014,
+      "clear": 7821,
+      "depth": 879.8802395209582
+    },
+    {
+      "id": "plant-se",
+      "opaque": 12847,
+      "clear": 9799,
+      "depth": 834.8502994011976
+    }
+  ],
+  "originalCollidersUnchanged": true,
+  "behindOccludedPixels": 8985,
+  "frontChangedPixels": 0,
+  "foliagePassable": true,
+  "potBlocks": true,
+  "reset": true
+}

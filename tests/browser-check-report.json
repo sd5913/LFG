@@ -1,0 +1,270 @@
+{
+  "movement": [
+    {
+      "keys": [
+        "w"
+      ],
+      "facing": "up",
+      "distance": 87.99999999999869,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "s"
+      ],
+      "facing": "down",
+      "distance": 88.00000000000148,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "a"
+      ],
+      "facing": "left",
+      "distance": 68.26946107784443,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "d"
+      ],
+      "facing": "right",
+      "distance": 88.00000000000182,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "w",
+        "d"
+      ],
+      "facing": "right",
+      "distance": 89.71428913603732,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "s",
+        "a"
+      ],
+      "facing": "left",
+      "distance": 87.99999999999943,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "ArrowUp"
+      ],
+      "facing": "up",
+      "distance": 87.99999999999869,
+      "stopped": true,
+      "feetAligned": true
+    },
+    {
+      "keys": [
+        "ArrowRight"
+      ],
+      "facing": "right",
+      "distance": 86.16666666666845,
+      "stopped": true,
+      "feetAligned": true
+    }
+  ],
+  "collisions": [
+    {
+      "id": "bench-west",
+      "side": "left",
+      "gap": -2.842170943040401e-14
+    },
+    {
+      "id": "bench-west",
+      "side": "right",
+      "gap": 5.684341886080802e-14
+    },
+    {
+      "id": "bench-west",
+      "side": "top",
+      "gap": -5.684341886080802e-14
+    },
+    {
+      "id": "bench-west",
+      "side": "bottom",
+      "gap": 0
+    },
+    {
+      "id": "bench-east",
+      "side": "left",
+      "gap": 0
+    },
+    {
+      "id": "bench-east",
+      "side": "top",
+      "gap": -1.1368683772161603e-13
+    },
+    {
+      "id": "bench-east",
+      "side": "bottom",
+      "gap": 0
+    },
+    {
+      "id": "plant-centre",
+      "side": "left",
+      "gap": 1.1368683772161603e-13
+    },
+    {
+      "id": "plant-centre",
+      "side": "right",
+      "gap": -1.1368683772161603e-13
+    },
+    {
+      "id": "plant-centre",
+      "side": "top",
+      "gap": 0
+    },
+    {
+      "id": "plant-centre",
+      "side": "bottom",
+      "gap": 0
+    },
+    {
+      "id": "case-nw",
+      "side": "left",
+      "gap": 0
+    },
+    {
+      "id": "case-nw",
+      "side": "right",
+      "gap": 0
+    },
+    {
+      "id": "case-nw",
+      "side": "top",
+      "gap": 0
+    },
+    {
+      "id": "case-nw",
+      "side": "bottom",
+      "gap": 0
+    },
+    {
+      "id": "case-ne",
+      "side": "left",
+      "gap": 0
+    },
+    {
+      "id": "case-ne",
+      "side": "right",
+      "gap": 0
+    },
+    {
+      "id": "case-ne",
+      "side": "top",
+      "gap": 0
+    },
+    {
+      "id": "case-ne",
+      "side": "bottom",
+      "gap": 0
+    },
+    {
+      "id": "case-sw",
+      "side": "left",
+      "gap": 0
+    },
+    {
+      "id": "case-sw",
+      "side": "right",
+      "gap": 0
+    },
+    {
+      "id": "case-sw",
+      "side": "top",
+      "gap": 0
+    },
+    {
+      "id": "case-sw",
+      "side": "bottom",
+      "gap": 0
+    },
+    {
+      "id": "case-se",
+      "side": "left",
+      "gap": 1.1368683772161603e-13
+    },
+    {
+      "id": "case-se",
+      "side": "right",
+      "gap": 0
+    },
+    {
+      "id": "case-se",
+      "side": "top",
+      "gap": 0
+    },
+    {
+      "id": "case-se",
+      "side": "bottom",
+      "gap": 0
+    }
+  ],
+  "inaccessibleProbes": [
+    {
+      "id": "bench-east",
+      "side": "right",
+      "reason": "No legal starting position between this obstacle and the outer wall"
+    }
+  ],
+  "walls": [
+    "left",
+    "right",
+    "top",
+    "bottom"
+  ],
+  "viewports": [
+    {
+      "width": 1378.828125,
+      "height": 775.59375,
+      "x": 29.796875,
+      "y": 94,
+      "scrollWidth": 1440,
+      "innerWidth": 1440,
+      "rendering": "pixelated"
+    },
+    {
+      "width": 979.46875,
+      "height": 550.953125,
+      "x": 21.484375,
+      "y": 88,
+      "scrollWidth": 1024,
+      "innerWidth": 1024,
+      "rendering": "pixelated"
+    },
+    {
+      "width": 363.015625,
+      "height": 204.203125,
+      "x": 12.703125,
+      "y": 78,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "rendering": "pixelated"
+    },
+    {
+      "width": 351.96875,
+      "height": 197.984375,
+      "x": 245.21875,
+      "y": 88,
+      "scrollWidth": 844,
+      "innerWidth": 844,
+      "rendering": "pixelated"
+    }
+  ],
+  "errors": [],
+  "focusLossStops": true,
+  "reset": true,
+  "missingAssetFeedback": true
+}
