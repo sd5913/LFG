@@ -1,6 +1,7 @@
 {
   "canvas": { "width": 1672, "height": 941, "origin": "top-left", "unit": "px" },
   "status": "visual planning draft; collider and detection ranges require in-game tuning",
+  "doorways": [],
   "playerStart": { "x": 240, "y": 775 },
   "statues": [
     {
