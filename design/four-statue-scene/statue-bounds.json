@@ -1,0 +1,54 @@
+{
+  "04-hand-on-shoulder": {
+    "file": "statues/04-hand-on-shoulder.png",
+    "sourceSize": [
+      1199,
+      1312
+    ],
+    "alphaBounds": [
+      400,
+      172,
+      392,
+      1010
+    ]
+  },
+  "01-hands-at-heart": {
+    "file": "statues/01-hands-at-heart.png",
+    "sourceSize": [
+      1199,
+      1312
+    ],
+    "alphaBounds": [
+      385,
+      170,
+      431,
+      999
+    ]
+  },
+  "03-hand-on-head": {
+    "file": "statues/03-hand-on-head.png",
+    "sourceSize": [
+      1199,
+      1312
+    ],
+    "alphaBounds": [
+      336,
+      171,
+      478,
+      1013
+    ]
+  },
+  "02-holding-scroll": {
+    "file": "statues/02-holding-scroll.png",
+    "sourceSize": [
+      1199,
+      1312
+    ],
+    "alphaBounds": [
+      381,
+      169,
+      424,
+      998
+    ]
+  }
+}

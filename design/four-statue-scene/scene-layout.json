@@ -1,0 +1,86 @@
+{
+  "canvas": { "width": 1672, "height": 941, "origin": "top-left", "unit": "px" },
+  "status": "visual planning draft; collider and detection ranges require in-game tuning",
+  "playerStart": { "x": 240, "y": 775 },
+  "statues": [
+    {
+      "id": "A",
+      "name": "护心雕像",
+      "targetId": "hands-at-heart",
+      "sprite": "statues/01-hands-at-heart.png",
+      "poseScreen": "pose-screens/01-hands-at-heart.png",
+      "displayBox": [265, 270, 285, 180],
+      "approach": { "x": 400, "y": 470, "radius": 68 },
+      "role": "upper route pose stop and cover"
+    },
+    {
+      "id": "B",
+      "name": "持卷雕像",
+      "targetId": "holding-scroll",
+      "sprite": "statues/02-holding-scroll.png",
+      "poseScreen": "pose-screens/02-holding-scroll.png",
+      "displayBox": [420, 555, 250, 175],
+      "approach": { "x": 540, "y": 755, "radius": 68 },
+      "role": "lower route pose stop and cover"
+    },
+    {
+      "id": "C",
+      "name": "抚额雕像",
+      "targetId": "hand-on-head",
+      "sprite": "statues/03-hand-on-head.png",
+      "poseScreen": "pose-screens/03-hand-on-head.png",
+      "displayBox": [905, 300, 245, 155],
+      "approach": { "x": 1015, "y": 475, "radius": 68 },
+      "role": "shared destination of both routes"
+    },
+    {
+      "id": "D",
+      "name": "搭肩雕像",
+      "targetId": "hand-on-shoulder",
+      "sprite": "statues/04-hand-on-shoulder.png",
+      "poseScreen": "pose-screens/04-hand-on-shoulder.png",
+      "displayBox": [950, 630, 275, 160],
+      "approach": { "x": 905, "y": 710, "radius": 68 },
+      "matchProposal": "right wrist near opposite shoulder, right elbow across chest; normalize by shoulder width and verify mirrored preview during playtest",
+      "role": "lower route pose stop and case cover; new recognition target must be implemented"
+    }
+  ],
+  "cover": [
+    { "id": "left-bench", "kind": "bench", "box": [220, 500, 180, 80] },
+    { "id": "central-planter", "kind": "tall-planter", "box": [680, 380, 100, 230] },
+    { "id": "A-display", "kind": "display-case", "box": [265, 270, 285, 180] },
+    { "id": "B-display", "kind": "display-case", "box": [420, 555, 250, 175] },
+    { "id": "C-display", "kind": "display-case", "box": [905, 300, 245, 155] },
+    { "id": "D-display", "kind": "display-case", "box": [950, 630, 275, 160] },
+    { "id": "right-bench", "kind": "bench", "box": [1520, 510, 70, 145] }
+  ],
+  "guard": {
+    "illustrativePatrol": [[1080, 545], [1270, 545]],
+    "illustrativeDangerEllipse": { "cx": 1130, "cy": 548, "rx": 262, "ry": 126 },
+    "note": "The rendered red cone shows one facing direction only. Use live guard position and obstacle occlusion for detection."
+  },
+  "routes": {
+    "upperSafer": {
+      "viaStatues": ["A"],
+      "toStatue": "C",
+      "waypoints": [[240, 775], [160, 680], [160, 470], [400, 470], [615, 470], [615, 245], [830, 245], [830, 475], [1015, 475]]
+    },
+    "lowerFaster": {
+      "viaStatues": ["B", "D"],
+      "toStatue": "C",
+      "waypoints": [[240, 775], [390, 775], [540, 755], [720, 750], [820, 750], [905, 710], [855, 630], [850, 535], [1015, 475]]
+    },
+    "toTreasureAfterC": {
+      "waypoints": [[1015, 475], [1230, 465], [1290, 385], [1350, 345]],
+      "requires": "C pose accepted and safe window active"
+    }
+  },
+  "treasureApproach": { "x": 1350, "y": 345, "radius": 60 },
+  "poseInteractionProposal": {
+    "trigger": "scanner warning while player is within a statue approach radius",
+    "holdDurationMs": 2000,
+    "onSuccess": "grant temporary camera-safe window and allow movement",
+    "onFailure": "raise alarm; at 100 percent enter failure state",
+    "awayFromStatue": "ordinary exposure raises alert; player can reach cover or a statue before the next scan"
+  }
+}
