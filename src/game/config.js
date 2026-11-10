@@ -35,11 +35,20 @@ export const PLAYER_ART = Object.freeze({
 export const WALKABLE = Object.freeze(roomRect({ x: 62, y: 195, width: 1546, height: 670 }));
 
 export const DISPLAY_CASES = Object.freeze([
-  { id: 'case-nw', x: 405, bottom: 451, width: 280 },
-  { id: 'case-ne', x: 1025, bottom: 463, width: 245 },
-  { id: 'case-sw', x: 544, bottom: 733, width: 250 },
-  { id: 'case-se', x: 1091, bottom: 796, width: 278 },
+  { id: 'case-nw', x: 405, bottom: 451, width: 280, hiddenFile: 'assets/exhibits/case-nw-hidden.png', hiddenBounds: [347, 209, 843, 606] },
+  { id: 'case-ne', x: 1025, bottom: 463, width: 280, hiddenFile: 'assets/exhibits/case-ne-hidden.png', hiddenBounds: [347, 210, 843, 604] },
+  { id: 'case-sw', x: 544, bottom: 733, width: 280, hiddenFile: 'assets/exhibits/case-sw-hidden.png', hiddenBounds: [348, 208, 841, 605] },
+  { id: 'case-se', x: 1091, bottom: 796, width: 280, hiddenFile: 'assets/exhibits/case-se-hidden.png', hiddenBounds: [346, 209, 845, 605] },
 ]);
+
+// The treasure presentation sits in the upper-right alcove. Its physical body
+// is deliberately only the low plinth: the player can pass visually behind
+// the taller display but cannot walk through its base.
+export const TREASURE_DISPLAY = Object.freeze({
+  id: 'treasure-display', file: 'assets/treasure-display.png',
+  x: 1450, bottom: 394, width: 344, height: 229,
+  collision: { x: 1286, y: 360, width: 328, height: 34 },
+});
 
 export const PLANT_FOREGROUND = Object.freeze({
   guideFile: 'assets/plants/foreground-guide.png',
@@ -84,6 +93,7 @@ export const OBSTACLES = Object.freeze([
     width: item.width - 14,
     height: 34,
   })),
+  roomRect({ id: TREASURE_DISPLAY.id, ...TREASURE_DISPLAY.collision }),
 ]);
 
 export const SCULPTURE_ART = Object.freeze({

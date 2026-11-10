@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, WALKABLE, roomPoint } from './config.js';
+import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
 import { KEY_DIRECTIONS, movementIntent } from './movement.js';
 import { plantPixels } from './plant-foreground.js';
 import { sceneryPixels, opaqueRectangles } from './scenery-foreground.js';
@@ -21,6 +21,8 @@ export default class Room1 extends Phaser.Scene {
     this.load.image('room-source', base + BACKGROUND.url);
     this.load.image('case-source', base + SCULPTURE_ART.file);
     this.load.image('case-highlight-source', base + EXHIBIT_HIGHLIGHT_ART.file);
+    for (const item of DISPLAY_CASES) this.load.image(`${item.id}-hidden`, base + item.hiddenFile);
+    this.load.image('treasure-display', base + TREASURE_DISPLAY.file);
     this.load.image('plant-guide', base + PLANT_FOREGROUND.guideFile);
     for (const [direction, art] of Object.entries(PLAYER_ART)) {
       this.load.image(`source-${direction}`, base + art.file);
@@ -52,8 +54,16 @@ export default class Room1 extends Phaser.Scene {
       const highlight = this.add.image(0, 0, 'case-highlight-source').setOrigin(0)
         .setVisible(false).setName(`${item.id}-underlay`);
       this.alignExhibitHighlight(image, highlight);
-      this.exhibits.push({ id: item.id, image, highlight });
+      this.exhibits.push({
+        id: item.id, image, highlight,
+        hiddenTexture: `${item.id}-hidden`,
+        displayWidth: image.displayWidth, displayHeight: image.displayHeight,
+      });
     }
+    const treasure = roomPoint(TREASURE_DISPLAY.x, TREASURE_DISPLAY.bottom);
+    this.treasureDisplay = this.add.image(treasure.x, treasure.y, 'treasure-display').setOrigin(0.5, 1)
+      .setDisplaySize(TREASURE_DISPLAY.width * ROOM_SCALE, TREASURE_DISPLAY.height * ROOM_SCALE)
+      .setDepth(treasure.y);
     this.hiddenExhibitId = null;
 
     this.blockers = this.physics.add.staticGroup();
@@ -80,6 +90,12 @@ export default class Room1 extends Phaser.Scene {
     this.textures.get('room-source').add('room-only', 0, 0, BACKGROUND.roomTop,
       BACKGROUND.width, BACKGROUND.height - BACKGROUND.roomTop);
     this.textures.get('case-source').add('case-only', 0, ...SCULPTURE_ART.bounds);
+    // Trim each replacement to its real opaque bounds once at load time. This
+    // gives it the exact same fixed on-screen rectangle as the original case,
+    // without mutating a Game Object while the player is moving.
+    for (const item of DISPLAY_CASES) {
+      this.textures.get(`${item.id}-hidden`).add('case-only', 0, ...item.hiddenBounds);
+    }
     this.createPlantAtlas();
     this.createSceneryShapes();
     this.playerSamples = {};
@@ -300,9 +316,23 @@ export default class Room1 extends Phaser.Scene {
     });
     this.hiddenExhibitId = hidden?.id ?? null;
     for (const exhibit of this.exhibits) {
-      this.alignExhibitHighlight(exhibit.image, exhibit.highlight);
-      exhibit.highlight.setVisible(exhibit === hidden);
+      this.setExhibitHidden(exhibit, exhibit === hidden);
     }
+  }
+
+  setExhibitHidden(exhibit, hidden) {
+    const { image } = exhibit;
+    const usesHiddenArt = image.texture.key === exhibit.hiddenTexture;
+    if (hidden && !usesHiddenArt) {
+      image.setTexture(exhibit.hiddenTexture, 'case-only')
+        .setDisplaySize(exhibit.displayWidth, exhibit.displayHeight);
+    } else if (!hidden && usesHiddenArt) {
+      image.setTexture('case-source', 'case-only')
+        .setDisplaySize(exhibit.displayWidth, exhibit.displayHeight);
+    }
+    image.setAlpha(hidden ? 0.85 : 1);
+    this.alignExhibitHighlight(image, exhibit.highlight);
+    exhibit.highlight.setVisible(hidden);
   }
 
   alignExhibitHighlight(image, highlight) {

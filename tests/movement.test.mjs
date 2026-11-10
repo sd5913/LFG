@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {movementIntent} from '../src/game/movement.js';
-import {BACKGROUND, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, ROOM_SCALE, WALKABLE} from '../src/game/config.js';
+import {BACKGROUND, DISPLAY_CASES, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, ROOM_SCALE, TREASURE_DISPLAY, WALKABLE, roomRect} from '../src/game/config.js';
 
 test('all cardinal and diagonal combinations retain the same configured speed', () => {
   for (const codes of [['KeyW'],['KeyS'],['KeyA'],['KeyD'],['KeyW','KeyA'],['KeyW','KeyD'],['KeyS','KeyA'],['KeyS','KeyD']]) {
@@ -43,11 +43,29 @@ test('the initial feet body is inside the room and outside every obstacle', () =
   }
 });
 
-test('four transparent directional sources and the four display-case footprints are configured', () => {
+test('four transparent directional sources and four equally sized display cases are configured', () => {
   assert.deepEqual(Object.keys(PLAYER_ART).sort(), ['down','left','right','up']);
   for(const art of Object.values(PLAYER_ART)) {
     assert.ok(art.footX >= art.bounds[0] && art.footX < art.bounds[0]+art.bounds[2]);
   }
   assert.equal(OBSTACLES.filter(item=>item.id.startsWith('case-')).length,4);
+  assert.ok(DISPLAY_CASES.every(item => item.width === DISPLAY_CASES[0].width));
+  assert.deepEqual(DISPLAY_CASES.map(item => item.hiddenFile), [
+    'assets/exhibits/case-nw-hidden.png',
+    'assets/exhibits/case-ne-hidden.png',
+    'assets/exhibits/case-sw-hidden.png',
+    'assets/exhibits/case-se-hidden.png',
+  ]);
+  for (const { hiddenBounds } of DISPLAY_CASES) {
+    assert.equal(hiddenBounds.length, 4);
+    assert.ok(hiddenBounds.every(Number.isFinite));
+    assert.ok(hiddenBounds[2] > 0 && hiddenBounds[3] > 0);
+  }
   assert.equal(OBSTACLES.filter(item=>item.id.startsWith('bench-')).length,2);
+});
+
+test('the upper-right treasure display has a plinth collision body', () => {
+  assert.ok(TREASURE_DISPLAY.x > BACKGROUND.width * .75);
+  assert.deepEqual(OBSTACLES.find(item => item.id === TREASURE_DISPLAY.id),
+    roomRect({ id: TREASURE_DISPLAY.id, ...TREASURE_DISPLAY.collision }));
 });

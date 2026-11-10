@@ -9,7 +9,6 @@ function App() {
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
-  const [focused, setFocused] = useState(false);
   useEffect(() => {
     let disposed = false;
     const scene = new Room1(value => { if (!disposed) setState(value); });
@@ -34,19 +33,9 @@ function App() {
     };
   }, []);
 
-  const command = name => {
-    const scene = gameRef.current?.scene.getScene('Room1');
-    if (scene?.player) { scene[name](); scene.focusCanvas(); }
-  };
-  const directionNames = { up: '上', down: '下', left: '左', right: '右' };
-
-  return <main className="workbench">
-    <header className="page-header">
-      <div className="identity"><span className="project-mark" aria-hidden="true">M / H</span><div><h1>Museum Heist</h1><p>博物馆大盗 · 第一间房移动原型</p></div></div>
-      <span className="build-label"><i aria-hidden="true" /> MOVEMENT MVP / 01</span>
-    </header>
+  return <main className="game-shell">
     <section className="stage-shell" aria-label="Museum Heist 游戏区域">
-      <div ref={host} className="game-host" onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+      <div ref={host} className="game-host" />
       <div className="room-hud" aria-hidden="true">
         <span className="hud-title">MUSEUM HEIST</span><span className="hud-subtitle">NIGHT SHIFT / MOVEMENT STUDY</span>
         <span className="hud-room">ROOM 01</span><span className="hud-keys">W A S D</span>
@@ -58,12 +47,6 @@ function App() {
         {state.error && <button onClick={() => window.location.reload()}>重新加载</button>}
       </div>}
     </section>
-    <footer className="control-strip">
-      <div className="keyboard-help"><div className="keycaps" aria-hidden="true"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div><p>移动<span>也支持方向键 · 松开即停</span></p></div>
-      <p className="movement-status" aria-live="polite">{state.ready ? `${focused ? (state.moving ? '移动中' : '已就位') : '点击画面后使用键盘'} · 朝向${directionNames[state.facing]}` : '素材加载中'}</p>
-      <div className="tools"><button disabled={!state.ready} aria-pressed={state.debug} onClick={() => command('toggleDebug')}>{state.debug ? '隐藏碰撞框' : '显示碰撞框'} <span>F2</span></button><button disabled={!state.ready} onClick={() => command('resetPlayer')}>回到起点 <span>R</span></button></div>
-    </footer>
-    <p className="scope-note">本轮验证移动、朝向与碰撞。展柜可以绕行；保安与姿势挑战将在后续接入。</p>
   </main>;
 }
 

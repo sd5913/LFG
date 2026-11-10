@@ -46,5 +46,45 @@
         "height":  1024,
         "hasTransparentPixels":  true,
         "sha256":  "1e6d21e7c159ce93378bd81e44d4847b0eb8d2ea6d9a65de70cb62bca68cf358"
+    },
+    {
+        "source":  "user-provided display case reference 1 (transparent sprite extraction)",
+        "runtime":  "assets/exhibits/case-nw-hidden.png",
+        "width":  1536,
+        "height":  1024,
+        "hasTransparentPixels":  true,
+        "sha256":  "3ed92381058705b51cda9e141f2ede5216710968af4d79c9866a0507521e688a"
+    },
+    {
+        "source":  "user-provided display case reference 3 (transparent sprite extraction)",
+        "runtime":  "assets/exhibits/case-ne-hidden.png",
+        "width":  1536,
+        "height":  1024,
+        "hasTransparentPixels":  true,
+        "sha256":  "26e66e4cae3c9090bbae5587d25d071618f6f505aafe92c40d2e7a509a640615"
+    },
+    {
+        "source":  "user-provided display case reference 2 (transparent sprite extraction)",
+        "runtime":  "assets/exhibits/case-sw-hidden.png",
+        "width":  1536,
+        "height":  1024,
+        "hasTransparentPixels":  true,
+        "sha256":  "fcf38e0324907dacec05228f41a3cd7c0fc23b1a95bf2c988a8564fb5fcdc7de"
+    },
+    {
+        "source":  "user-provided lower-right display case reference (transparent sprite extraction)",
+        "runtime":  "assets/exhibits/case-se-hidden.png",
+        "width":  1536,
+        "height":  1024,
+        "hasTransparentPixels":  true,
+        "sha256":  "76a5b7ea060cad11fd560fffb1fd09163e143a7cf72fb874039ec75c15c18cf6"
+    },
+    {
+        "source":  "user-provided treasure display reference (transparent sprite extraction)",
+        "runtime":  "assets/treasure-display.png",
+        "width":  1536,
+        "height":  1024,
+        "hasTransparentPixels":  true,
+        "sha256":  "f608e671909537343b1f1ed4e941ad9ae5397abdd4104d5dd6bea2f666eef038"
     }
 ]
