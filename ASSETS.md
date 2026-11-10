@@ -19,7 +19,15 @@ The room portion of `back.png` has no fixed gameplay player, guard or vision con
 
 The built-in image_gen tool extracted an eight-plant transparent alpha guide from `back.png`. The guide is saved in `public/assets/plants/foreground-guide.png` (1670 × 942 RGBA). It is used for selection, not to repaint generated colours over the original art. At load time, the guide is mapped to the source dimensions, floor-coloured pixels are rejected, and the original room RGB is copied into a shared transparent atlas. Eight geometry-clipped instances use exactly the background's drawing transform to avoid pixel drift.
 
-`public/assets/plants/foreground.png` is an exported transparent copy of that original-colour atlas (1670 × 851, excluding the original top 90 rows), provided for inspection and reuse. The game constructs the same layer at runtime. Each plant's sort depth follows the pot bottom; its drawing frame is separate from its unchanged collision rectangle. The prompt and processing decisions are recorded in [docs/plant-foreground.md](docs/plant-foreground.md).
+`public/assets/plants/foreground.png` is an exported transparent copy of that original-colour atlas (1670 × 851, excluding the original top 90 rows), provided for inspection and reuse. The game constructs the same layer at runtime. Each plant's sort depth follows the pot bottom; its drawing frame is separate from its collision rectangle. The central plant now has full-frame collision; the other seven retain pot-only collision. The prompt and processing decisions are recorded in [docs/plant-foreground.md](docs/plant-foreground.md).
+
+## Bench and lower-lamp foregrounds — 10 November 2026
+
+Both benches and the two lower lamp fixtures are selected from the unchanged `back.png` by runtime Canvas code. Their alpha selections are compressed into clipping rectangles over the original room texture, preserving source colours and alignment. No new raster artwork or image-generation call is used for this update. Lamp silhouettes exclude the surrounding glow; upper lamps are not selected. The original background PNG is not overwritten.
+
+## Separate exhibit highlight addition
+
+The later exhibit highlight uses the team-supplied `sucai/sculpture2.png`, copied byte-for-byte to `public/assets/exhibits/sculpture2.png` (1536 × 1024 RGBA; SHA-256 `98f8d8e364bba7e5853740246177497ef0c6ebfdbceafcdcefdaf0cd28ef2161`). Its alpha is preserved. `sculpture3.png` is the team's composite appearance reference only; it is not used as the runtime exhibit, so highlight and exhibit remain separate. See [layer alignment](docs/exhibit-layers.md).
 
 ## Inspected but not used
 
@@ -27,4 +35,4 @@ The built-in image_gen tool extracted an eight-plant transparent alpha guide fro
 - `sucai/final` is a PNG without a filename extension and contains the composed scene, fixed characters and cone. It is a reference only and is not loaded or bundled.
 - The earlier `art-reference` concepts and `Stealth_Game_UI_Kit_Full_Package (1).zip` are not required by this implementation. The ZIP was listed for inspection, not installed or executed.
 
-There is no blocking player/background asset gap for this MVP: all four player directions are transparent, and a character-free room frame can be selected without using the composite gameplay picture. Plant foregrounds are now implemented. Bench foreground masks and additional exhibit poses remain separate needs.
+There is no blocking player/background asset gap for this MVP: all four player directions are transparent, and a character-free room frame can be selected without using the composite gameplay picture. Plant, bench and lower-lamp foregrounds are implemented. Additional exhibit poses remain a separate need.

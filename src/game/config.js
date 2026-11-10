@@ -58,13 +58,24 @@ export const PLANTS = Object.freeze([
   { id: 'plant-se', frame: { x: 1489, y: 717, width: 134, height: 169 }, pot: { x: 1511, y: 824, width: 60, height: 49 } },
 ]);
 
+// The upper artwork occludes the player; only each bench's lower base blocks feet.
+export const BENCHES = Object.freeze([
+  { id: 'bench-west', kind: 'bench', frame: { x: 214, y: 492, width: 189, height: 89 }, base: { x: 225, y: 544, width: 166, height: 30 } },
+  { id: 'bench-east', kind: 'bench', frame: { x: 1509, y: 507, width: 81, height: 168 }, base: { x: 1520, y: 636, width: 58, height: 28 } },
+]);
+
+// Only the two lower fixtures become foreground. Their soft baked light stays
+// on the background; neither fixtures nor light halos create physical bodies.
+export const BOTTOM_LIGHTS = Object.freeze([
+  { id: 'light-south-west', kind: 'lamp', frame: { x: 493, y: 844, width: 57, height: 56 } },
+  { id: 'light-south-east', kind: 'lamp', frame: { x: 1120, y: 844, width: 57, height: 56 } },
+]);
+
+export const SCENERY = Object.freeze([...BENCHES, ...BOTTOM_LIGHTS]);
+
 // Feet collide with furniture bases, except the explicitly full-height central plant.
-const bakedFurniture = [
-  { id: 'bench-west', x: 225, y: 528, width: 166, height: 46 },
-  { id: 'bench-east', x: 1520, y: 538, width: 58, height: 120 },
-];
 export const OBSTACLES = Object.freeze([
-  ...bakedFurniture.map(roomRect),
+  ...BENCHES.map(({ id, base }) => roomRect({ id, ...base })),
   ...PLANTS.map(({ id, pot, frame, collision }) => roomRect({ id, ...(collision === 'full' ? frame : pot) })),
   ...DISPLAY_CASES.map(item => roomRect({
     id: item.id,
@@ -77,4 +88,10 @@ export const OBSTACLES = Object.freeze([
 
 export const SCULPTURE_ART = Object.freeze({
   file: 'assets/exhibits/sculpture.png', bounds: [348, 211, 841, 602],
+});
+
+// Independent underlay: registration describes the exhibit rectangle in this
+// highlight image's source canvas. Keep this asset separate when replacing art.
+export const EXHIBIT_HIGHLIGHT_ART = Object.freeze({
+  file: 'assets/exhibits/sculpture2.png', registration: [348, 211, 841, 602],
 });

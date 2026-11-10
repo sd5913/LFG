@@ -1,5 +1,38 @@
 # Room 1 movement MVP — verification
 
+## Image underlay replacing the ellipse — 10 November 2026
+
+This section supersedes the earlier blue-ring implementation below. The ellipse Graphics object and ellipse drawing were removed. The unchanged team-supplied `sculpture2.png` is now an independent Phaser image underneath each exhibit; `sculpture3.png` is a reference only.
+
+The local Chrome check confirmed:
+
+- All four exhibit entries own separate exhibit/highlight images, with the highlight below the exhibit. There is no old ellipse object. The highlight source is byte-identical to the supplied file.
+- In all four facings, the northwest, southwest and southeast cases show only their own underlay when the character is completely hidden. The shorter northeast case still leaves visible hat pixels at the closest legal point, so its underlay remains hidden.
+- Partial/front exposure, walking out using native keyboard input and reset hide all underlays.
+- 1440×1000, 1024×768, 390×844 and 844×390 preserve source-to-world layer alignment.
+- A diagnostic replacement of the exhibit texture leaves the highlight as an independent image. It is not baked into the exhibit artwork.
+- All collision rectangles match the previous scenery update exactly. No uncaught page errors occurred.
+
+The existing sixteen Node tests still pass. See [underlay browser report](exhibit-underlay-check-report.json), [screenshot](../screenshots/exhibit-hidden-underlay.png) and [replacement instructions](../docs/exhibit-layers.md). These browser checks are not a human playtest. Earlier ring screenshots/reports below are historical evidence of the superseded version.
+
+---
+
+## Scenery and exhibit visibility update — 10 November 2026
+
+This update supersedes the historical pot-only description below: the central plant keeps the full-frame collision requested later on 9 November; the other seven plants remain pot-only. Both benches now collide only at their lower bases. Both lower lamp fixtures occlude without adding bodies; the upper lamps, movement speed, player body, cases and room boundaries are unchanged.
+
+Sixteen Node tests cover movement, alpha selection, compact clipping paths, lower-base-only bench collision and full-character exhibit coverage. The local Chrome check uses a separate 5189 server and diagnostic positions followed by native keyboard input:
+
+- At 1440×1000, 1024×768, 390×844 and 844×390, masked scenery aligns with the source background. One lower-lamp edge pixel differs by a single colour-channel level due to Canvas clipping rounding; no positional shift or opaque floor rectangle is present.
+- Both benches cover the player behind their upper art, allow movement through that upper region, block downward travel at their lower base, and do not cover a player in front.
+- Both lower lamp fixtures cover player pixels without acquiring physical collision bodies. Their surrounding light remains decorative background.
+- All four exhibits were checked in all four facings. The northwest, southwest and southeast cases completely hide the tested character and show a blue ring. The shorter northeast case leaves a few hat pixels visible at the closest legal point and correctly does not claim complete hiding.
+- The ring clears for partially exposed/front positions, after walking out with native keyboard input, and on reset. No uncaught page exceptions occurred.
+
+See [the browser report](scenery-check-report.json) and [bench](../screenshots/bench-occlusion.png), [lamp](../screenshots/lower-lamp-occlusion.png) and [blue-ring](../screenshots/exhibit-hidden-ring.png) screenshots. These are automated/browser checks, not a new human playtest. The original source images were preserved. No new commit, push or deployment is part of this change.
+
+---
+
 ## Plant foreground update — 9 November 2026
 
 The user clarified that **only pots block movement; leaves are visual occluders**. The eight pot rectangles, all other obstacles, player speed and body dimensions remain unchanged. Eleven automated tests now cover the original movement/configuration checks plus transparent floor rejection, original-colour sampling, empty-guide behaviour and separate foliage/pot geometry.
@@ -54,4 +87,4 @@ The Windows helper's `-Build` command succeeded in the actual checkout. Vite emi
 
 ## Limits
 
-No human playtest is claimed. Physical mobile touch controls, other browsers, long-session frame rates and precise foreground masking for the background's baked-in benches remain unverified or outside this MVP. Plant foreground masking is covered by the update above. The same sculpture pose is reused for all four cases. The static route HUD does not implement room progression or alert logic. A large Phaser bundle warning is expected; it is not evidence of a measured runtime performance problem.
+No human playtest is claimed. Physical mobile touch controls, other browsers and long-session frame rates remain unverified or outside this MVP. Plant, bench and lower-lamp foreground masking are covered by the updates above. The same sculpture pose is reused for all four cases. The static route HUD does not implement room progression or alert logic. A large Phaser bundle warning is expected; it is not evidence of a measured runtime performance problem.

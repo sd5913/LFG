@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import { BACKGROUND, DISPLAY_CASES, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCULPTURE_ART, WALKABLE, roomPoint } from './config.js';
+import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, WALKABLE, roomPoint } from './config.js';
 import { KEY_DIRECTIONS, movementIntent } from './movement.js';
 import { plantPixels } from './plant-foreground.js';
+import { sceneryPixels, opaqueRectangles } from './scenery-foreground.js';
+import { alphaMask, solidSamples, fullyCovered } from './occlusion.js';
 
 export default class Room1 extends Phaser.Scene {
   constructor(onState) {
@@ -18,6 +20,7 @@ export default class Room1 extends Phaser.Scene {
     const base = import.meta.env.BASE_URL;
     this.load.image('room-source', base + BACKGROUND.url);
     this.load.image('case-source', base + SCULPTURE_ART.file);
+    this.load.image('case-highlight-source', base + EXHIBIT_HIGHLIGHT_ART.file);
     this.load.image('plant-guide', base + PLANT_FOREGROUND.guideFile);
     for (const [direction, art] of Object.entries(PLAYER_ART)) {
       this.load.image(`source-${direction}`, base + art.file);
@@ -35,14 +38,23 @@ export default class Room1 extends Phaser.Scene {
       .setScale(ROOM_SCALE).setDepth(-10000);
     this.drawHud();
     this.createPlantLayers();
+    this.createSceneryLayers();
 
+    this.exhibits = [];
     for (const item of DISPLAY_CASES) {
       const p = roomPoint(item.x, item.bottom);
       const width = item.width * ROOM_SCALE;
-      this.add.image(p.x, p.y, 'case-source', 'case-only').setOrigin(0.5, 1)
+      const image = this.add.image(p.x, p.y, 'case-source', 'case-only').setOrigin(0.5, 1)
         .setDisplaySize(width, width * SCULPTURE_ART.bounds[3] / SCULPTURE_ART.bounds[2])
         .setDepth(p.y);
+      // Independent source-aligned image behind the exhibit, not a flattened
+      // highlighted copy. Full source canvas retains the supplied border/dots.
+      const highlight = this.add.image(0, 0, 'case-highlight-source').setOrigin(0)
+        .setVisible(false).setName(`${item.id}-underlay`);
+      this.alignExhibitHighlight(image, highlight);
+      this.exhibits.push({ id: item.id, image, highlight });
     }
+    this.hiddenExhibitId = null;
 
     this.blockers = this.physics.add.staticGroup();
     for (const obstacle of OBSTACLES) {
@@ -69,6 +81,8 @@ export default class Room1 extends Phaser.Scene {
       BACKGROUND.width, BACKGROUND.height - BACKGROUND.roomTop);
     this.textures.get('case-source').add('case-only', 0, ...SCULPTURE_ART.bounds);
     this.createPlantAtlas();
+    this.createSceneryShapes();
+    this.playerSamples = {};
     for (const [direction, art] of Object.entries(PLAYER_ART)) {
       const texture = this.textures.createCanvas(`player-${direction}`, PLAYER.textureSize, PLAYER.textureSize);
       const context = texture.getContext();
@@ -80,7 +94,51 @@ export default class Room1 extends Phaser.Scene {
         PLAYER.textureSize - PLAYER.artHeight, width * scale, PLAYER.artHeight);
       texture.refresh();
       texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.playerSamples[direction] = solidSamples(alphaMask(
+        context.getImageData(0, 0, PLAYER.textureSize, PLAYER.textureSize).data,
+        PLAYER.textureSize, PLAYER.textureSize));
     }
+    const [x, y, width, height] = SCULPTURE_ART.bounds;
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(this.textures.get('case-source').getSourceImage(), x, y, width, height, 0, 0, width, height);
+    this.exhibitAlpha = alphaMask(context.getImageData(0, 0, width, height).data, width, height);
+  }
+
+  createSceneryShapes() {
+    const { width, height } = BACKGROUND;
+    const sourceCanvas = document.createElement('canvas');
+    sourceCanvas.width = width; sourceCanvas.height = height;
+    const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
+    sourceContext.drawImage(this.textures.get('room-source').getSourceImage(), 0, 0);
+    const source = sourceContext.getImageData(0, 0, width, height).data;
+    this.sceneryShapes = new Map();
+    for (const item of SCENERY) {
+      const pixels = sceneryPixels(source, width, height, item);
+      this.sceneryShapes.set(item.id, opaqueRectangles(pixels, item.frame.width, item.frame.height));
+    }
+  }
+
+  createSceneryLayers() {
+    const masks = [];
+    this.sceneryLayers = SCENERY.map(({ id, frame, base }) => {
+      const graphics = this.make.graphics({ x: 0, y: 0 }, false);
+      graphics.fillStyle(0xffffff);
+      for (const rect of this.sceneryShapes.get(id)) {
+        const corner = roomPoint(frame.x + rect.x, frame.y + rect.y);
+        graphics.fillRect(corner.x, corner.y, rect.width * ROOM_SCALE, rect.height * ROOM_SCALE);
+      }
+      const mask = graphics.createGeometryMask();
+      masks.push({ graphics, mask });
+      return this.add.image(0, HUD_HEIGHT, 'room-source', 'room-only').setOrigin(0)
+        .setScale(ROOM_SCALE).setMask(mask)
+        .setDepth(roomPoint(0, base ? base.y + base.height : frame.y + frame.height).y)
+        .setName(id);
+    });
+    this.events.once('shutdown', () => {
+      for (const { graphics, mask } of masks) { mask.destroy(); graphics.destroy(); }
+    });
   }
 
   createPlantAtlas() {
@@ -218,8 +276,41 @@ export default class Room1 extends Phaser.Scene {
       this.player.setTexture(`player-${this.facing}`);
     }
     this.player.setDepth(this.player.y);
+    this.updateExhibitHint();
     this.publish({ facing: this.facing, moving: input.vx !== 0 || input.vy !== 0 });
     this.drawDebug();
+  }
+
+  updateExhibitHint() {
+    const key = `${this.player.x},${this.player.y},${this.facing}`;
+    if (key === this.lastOcclusionKey) return;
+    this.lastOcclusionKey = key;
+    const player = { x: this.player.x - PLAYER.textureSize / 2,
+      y: this.player.y - PLAYER.textureSize, scaleX: 1, scaleY: 1, depth: this.player.depth };
+    const points = this.playerSamples[this.facing];
+    const hidden = this.exhibits.find(({ image }) => {
+      const bounds = image.getBounds();
+      // Reject distant cases before examining the cached alpha samples.
+      if (player.x > bounds.right || player.x + PLAYER.textureSize < bounds.left ||
+          player.y > bounds.bottom || player.y + PLAYER.textureSize < bounds.top) return false;
+      return fullyCovered(points, player, this.exhibitAlpha, {
+        x: bounds.x, y: bounds.y, scaleX: image.displayWidth / this.exhibitAlpha.width,
+        scaleY: image.displayHeight / this.exhibitAlpha.height, depth: image.depth,
+      });
+    });
+    this.hiddenExhibitId = hidden?.id ?? null;
+    for (const exhibit of this.exhibits) {
+      this.alignExhibitHighlight(exhibit.image, exhibit.highlight);
+      exhibit.highlight.setVisible(exhibit === hidden);
+    }
+  }
+
+  alignExhibitHighlight(image, highlight) {
+    const bounds = image.getBounds();
+    const [x, y, width, height] = EXHIBIT_HIGHLIGHT_ART.registration;
+    const scaleX = bounds.width / width, scaleY = bounds.height / height;
+    highlight.setPosition(bounds.x - x * scaleX, bounds.y - y * scaleY)
+      .setScale(scaleX, scaleY).setDepth(image.depth - 0.1);
   }
 
   drawDebug() {

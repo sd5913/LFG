@@ -6,5 +6,6 @@
 - **Vite 8.3.7**, Vite contributors, MIT. [Official repository](https://github.com/vitejs/vite). Used for local development and production bundling.
 - **ChatGPT / Codex:** assisted with reading the design briefs, source/alpha inspection, project setup, runtime sprite alignment, movement and collision implementation, UI, documentation and test execution. The user set the game concept, supplied assets and limited this pass to the movement MVP. AI is not a runtime game service.
 - **Built-in image_gen:** assisted with extracting the eight plants into a transparent alpha guide from the supplied background. Original room colour pixels are used for the actual foreground; the user requested pot-only collision and decorative foliage occlusion. See [the extraction prompt and record](docs/plant-foreground.md). No image-generation call occurs during play.
+- **Team-supplied highlight:** `sculpture2.png` is used as an unchanged, independent blue image under the exhibit; `sculpture3.png` was supplied as the target composite reference. Codex implemented source-coordinate alignment and visibility switching without generating or flattening these images.
 
 No guard AI, live pose recognition or camera capture is implemented in this pass. No user-trial claims are inferred from automated or headless-browser checks.

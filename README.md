@@ -11,6 +11,8 @@
 - Four transparent character PNGs, aligned to one feet anchor despite different source dimensions.
 - Phaser Arcade collisions using a 34 by 20 logical-pixel feet body, room boundaries, four display-case bases, plant pots and two benches.
 - Transparent foreground for all eight plants: foliage hides a player standing behind it, while pots block movement. The central plant additionally blocks its entire foliage-and-pot rectangle. Plant colours remain sampled from the original background.
+- Both lower lamp fixtures occlude the player without adding collision; upper lamps are unchanged. Both benches have foreground artwork and lower-base collision only.
+- A separate team-supplied blue image sits underneath an exhibit only when its opaque artwork completely hides the character. It disappears when the character becomes visible again. The previous elliptical ring is removed; highlight and exhibit images remain independently replaceable.
 - A 1600 by 900 logical scene, proportional FIT scaling and nearest-neighbour image sampling.
 - F2 or the visible button toggles collision outlines; R or the reset button returns the character to its starting point.
 - Leaving the game canvas, switching away or losing focus clears held movement. Missing image assets produce a loading-error message with a reload button.
@@ -69,11 +71,15 @@ Source PNGs are copied byte-for-byte. Visible-art rectangles and per-image feet 
 - `src/game/config.js`: movement speed, spawn, source-image frames, feet body, walkable bounds and all obstacle coordinates. Obstacles use the background's original coordinate system and one shared mapping into the 16:9 scene.
 - `src/game/movement.js`: input normalisation and facing selection.
 - `src/game/plant-foreground.js`: alpha-guide cleanup and original-colour plant extraction; foliage is rendered separately from pot colliders.
+- `src/game/scenery-foreground.js`: source-colour bench/lower-lamp selection and compact foreground clipping paths.
+- `src/game/occlusion.js`: cached alpha masks and complete-character coverage checks for the exhibit underlay.
 - `src/game/Room1.js`: asset loading, Phaser scene, collision bodies, input lifecycle, reset and debug drawing.
 - `src/main.jsx`: React mount, canvas lifecycle, readable HUD labels, controls and loading/error feedback.
 - `src/styles.css`: responsive layout and pixel-image presentation.
 
-The small feet body deliberately permits moving visually behind tall art. Display cases and the eight plant foregrounds sort against the player's feet-y position. Each plant's full foliage is a transparent drawing layer; the central plant blocks its complete drawing rectangle, while the other seven retain their original pot-only collision. Collision outlines show the actual occupied-floor rectangles. Benches are still baked into the background, so precise seat foreground masking remains a later artwork-layering task. See [the plant extraction record](docs/plant-foreground.md).
+The small feet body deliberately permits moving visually behind tall art. Display cases, plant foregrounds and benches sort against the player's feet-y position. Each plant's full foliage is a transparent drawing layer; the central plant blocks its complete drawing rectangle, while the other seven retain their original pot-only collision. The benches block feet only at their lower bases; their upper artwork occludes characters behind them. The two lower lamps occlude without creating bodies, and their surrounding glow remains on the background. Source artwork is preserved using clipped instances of the original room texture. Collision outlines show the actual blocking rectangles. See [the plant extraction record](docs/plant-foreground.md).
+
+Exhibit highlighting uses the separate `public/assets/exhibits/sculpture2.png` layer below the original exhibit image. Its full source canvas is aligned through `EXHIBIT_HIGHLIGHT_ART.registration` in `config.js`; it is not flattened into the exhibit. See [exhibit layer setup](docs/exhibit-layers.md) before replacing exhibit artwork.
 
 ## Verification and limits
 

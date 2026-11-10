@@ -1,0 +1,124 @@
+{
+  "errors": [],
+  "collidersUnchanged": true,
+  "sourceHash": "98f8d8e364bba7e5853740246177497ef0c6ebfdbceafcdcefdaf0cd28ef2161",
+  "cases": [
+    {
+      "id": "case-nw",
+      "facings": [
+        {
+          "facing": "down",
+          "highlightVisible": true
+        },
+        {
+          "facing": "up",
+          "highlightVisible": true
+        },
+        {
+          "facing": "left",
+          "highlightVisible": true
+        },
+        {
+          "facing": "right",
+          "highlightVisible": true
+        }
+      ],
+      "partialHidden": true,
+      "frontHidden": true
+    },
+    {
+      "id": "case-ne",
+      "facings": [
+        {
+          "facing": "down",
+          "highlightVisible": false
+        },
+        {
+          "facing": "up",
+          "highlightVisible": false
+        },
+        {
+          "facing": "left",
+          "highlightVisible": false
+        },
+        {
+          "facing": "right",
+          "highlightVisible": false
+        }
+      ],
+      "partialHidden": true,
+      "frontHidden": true
+    },
+    {
+      "id": "case-sw",
+      "facings": [
+        {
+          "facing": "down",
+          "highlightVisible": true
+        },
+        {
+          "facing": "up",
+          "highlightVisible": true
+        },
+        {
+          "facing": "left",
+          "highlightVisible": true
+        },
+        {
+          "facing": "right",
+          "highlightVisible": true
+        }
+      ],
+      "partialHidden": true,
+      "frontHidden": true
+    },
+    {
+      "id": "case-se",
+      "facings": [
+        {
+          "facing": "down",
+          "highlightVisible": true
+        },
+        {
+          "facing": "up",
+          "highlightVisible": true
+        },
+        {
+          "facing": "left",
+          "highlightVisible": true
+        },
+        {
+          "facing": "right",
+          "highlightVisible": true
+        }
+      ],
+      "partialHidden": true,
+      "frontHidden": true
+    }
+  ],
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "aligned": true
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "aligned": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "aligned": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "aligned": true
+    }
+  ],
+  "layersIndependentlyReplaceable": true,
+  "walkingOutHidesUnderlay": true,
+  "resetHidesUnderlays": true
+}
