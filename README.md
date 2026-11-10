@@ -49,6 +49,10 @@ The production preview uses http://127.0.0.1:4173/. Alternatively, the Windows h
 powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Build
 ```
 
+### Pose Shadow Lab handoff
+
+When the character is fully behind a display case and its blue frame is visible, press **Space** to open the pose-shadow challenge. Start the camera to grant browser-local pose detection, then hold the highlighted target pose to progress through the three statue-inspired tasks. The MediaPipe model and runtime are loaded from public hosting on first use; camera frames and landmarks are not recorded or uploaded by this app.
+
 Dependencies are pinned in `package.json` and `pnpm-lock.yaml`: React/React DOM 19.3.1, Vite 8.3.7 and Phaser 3.90.0. This deliberately uses the documented Phaser 3 API. The project does not require the experimental UI-kit ZIP or the full composite concept image at runtime.
 
 ## Assets inspected and used
@@ -63,6 +67,8 @@ All four supplied player images contain a real alpha channel. Their actual facin
 | `image 47.png` | `public/assets/player/down.png` | Front / S |
 | `image 48.png` | `public/assets/player/up.png` | Back / W |
 | `image 49.png` | `public/assets/player/left.png` | Left / A |
+
+The pose challenge uses MediaPipe Tasks Vision / Pose Landmarker Lite for browser-local, single-person upper-body landmark detection. The web font is loaded from Google Fonts.
 
 Source PNGs are copied byte-for-byte. Visible-art rectangles and per-image feet positions create equal-sized runtime textures without flattening transparency, stretching art, or replacing missing directions. The same `sculpture.png` is reused for four separate display cases. Guard images were inspected but are not needed or bundled in this movement-only stage. See [ASSETS.md](ASSETS.md) for provenance and hashes.
 

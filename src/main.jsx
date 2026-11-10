@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client';
 import Phaser from 'phaser';
 import Room1 from './game/Room1.js';
 import { GAME } from './game/config.js';
+import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import './styles.css';
 
-function App() {
+function RoomExperience({ onPoseDemo }) {
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
@@ -33,6 +34,16 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const openPoseDemo = event => {
+      if (event.code !== 'Space' || !state.hiddenExhibitId) return;
+      event.preventDefault();
+      onPoseDemo();
+    };
+    window.addEventListener('keydown', openPoseDemo);
+    return () => window.removeEventListener('keydown', openPoseDemo);
+  }, [onPoseDemo, state.hiddenExhibitId]);
+
   return <main className="game-shell">
     <section className="stage-shell" aria-label="Museum Heist 游戏区域">
       <div ref={host} className="game-host" />
@@ -41,6 +52,7 @@ function App() {
         <span className="hud-room">ROOM 01</span><span className="hud-keys">W A S D</span>
         {[1,2,3].map((room,index)=><span className={`hud-node ${index===0?'active':''}`} style={{left:`${68.375+index*8.4375}%`}} key={room}>0{room}</span>)}
       </div>
+      {state.hiddenExhibitId && <p className="room-pose-hint">安全遮蔽中 · 按空格键开始姿势扫描</p>}
       {!state.ready && <div className="loading-panel" role={state.error ? 'alert' : 'status'}>
         <span className="panel-index">ROOM 01</span>
         <p>{state.error || '正在准备展厅与角色素材…'}</p>
@@ -48,6 +60,13 @@ function App() {
       </div>}
     </section>
   </main>;
+}
+
+function App() {
+  const [showPoseDemo, setShowPoseDemo] = useState(false);
+  return showPoseDemo
+    ? <PoseShadowDemo />
+    : <RoomExperience onPoseDemo={() => setShowPoseDemo(true)} />;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

@@ -83,7 +83,7 @@ export default class Room1 extends Phaser.Scene {
     this.collider = this.physics.add.collider(this.player, this.blockers);
     this.debugGraphics = this.add.graphics().setDepth(20000);
     this.installInput();
-    this.publish({ ready: true, error: '', facing: this.facing, moving: false, debug: false });
+    this.publish({ ready: true, error: '', facing: this.facing, moving: false, debug: false, hiddenExhibitId: null });
   }
 
   createTextures() {
@@ -314,10 +314,13 @@ export default class Room1 extends Phaser.Scene {
         scaleY: image.displayHeight / this.exhibitAlpha.height, depth: image.depth,
       });
     });
-    this.hiddenExhibitId = hidden?.id ?? null;
+    const hiddenExhibitId = hidden?.id ?? null;
+    const hiddenChanged = hiddenExhibitId !== this.hiddenExhibitId;
+    this.hiddenExhibitId = hiddenExhibitId;
     for (const exhibit of this.exhibits) {
       this.setExhibitHidden(exhibit, exhibit === hidden);
     }
+    if (hiddenChanged) this.publish({ hiddenExhibitId });
   }
 
   setExhibitHidden(exhibit, hidden) {
