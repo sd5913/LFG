@@ -12,12 +12,14 @@ const ASSET_ROOT = '/stealth-ui';
 const EXHIBIT_POSE_CONFIGS = Object.freeze({
   'case-nw': {
     title: '鸟首祈祷雕像', instruction: '双手在胸前交握，保持不动',
+    referenceImage: '/assets/exhibits/case-nw-hidden.png',
     // Low, nearly central elbows make both palms meet at the sternum.
     left: { upper: [-0.18, 0.98], forearm: [0.94, -0.34] },
     right: { upper: [0.18, 0.98], forearm: [-0.94, -0.34] },
   },
   'case-sw': {
     title: '持卷轴雕像', instruction: '双手在胸前捧起卷轴，保持不动',
+    referenceImage: '/assets/exhibits/case-sw-hidden.png',
     // Unlike the prayer pose, elbows open out and each hand stays on one side
     // of the imaginary scroll instead of meeting in the centre.
     left: { upper: [-0.8, 0.6], forearm: [1, -0.1] },
@@ -25,6 +27,7 @@ const EXHIBIT_POSE_CONFIGS = Object.freeze({
   },
   'case-ne': {
     title: '星月抚额雕像', instruction: '左手轻扶额角，右手自然收于腹前',
+    referenceImage: '/assets/exhibits/case-ne-hidden.png',
     // The raised hand stops beside the forehead, never above the head.
     left: { upper: [-0.6, -0.42], forearm: [0.54, -0.84] },
     right: { upper: [0.5, 0.76], forearm: [-0.86, -0.18] },
@@ -32,6 +35,7 @@ const EXHIBIT_POSE_CONFIGS = Object.freeze({
   },
   'case-se': {
     title: '宝石抱臂雕像', instruction: '左臂斜搭右肩，右手自然垂于腹前',
+    referenceImage: '/assets/exhibits/case-se-hidden.png',
     // This statue has one arm across the chest and the other relaxed at the waist.
     left: { upper: [0.48, 0.64], forearm: [0.55, -0.78] },
     // Keep the resting hand visibly outside the crossed arm, avoiding overlap.
@@ -44,7 +48,7 @@ const EXHIBIT_POSE_CONFIGS = Object.freeze({
 });
 
 const TARGETS = Object.entries(EXHIBIT_POSE_CONFIGS)
-  .map(([id, { title, instruction }]) => ({ id, title, instruction }));
+  .map(([id, { title, instruction, referenceImage }]) => ({ id, title, instruction, referenceImage }));
 
 function landmarkIsVisible(landmarks, index) {
   return landmarks[index] && (landmarks[index].visibility == null || landmarks[index].visibility > 0.45);
@@ -332,6 +336,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
           <section className="pose-screen">
             <img src={asset('pose_screen_panel.png')} alt="" />
             <p className="target-step">目标动作 01 / 01 · {target.title}</p>
+            <img className="pose-reference-backdrop" src={target.referenceImage} alt="" />
             <canvas ref={canvasRef} width="1124" height="596" aria-label="目标姿势虚影与实时关节点识别" />
             <div className="pose-progress" aria-label={`姿势匹配进度 ${Math.round(holdProgress)}%`}>
               <span>姿势匹配进度</span>
