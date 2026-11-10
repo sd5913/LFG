@@ -19,7 +19,8 @@ export const PLAYER = Object.freeze({
   artHeight: 138,
   bodyWidth: 34,
   bodyHeight: 20,
-  spawn: Object.freeze(roomPoint(250, 830)),
+  // Start on the clear lower portion of the left entrance's red carpet.
+  spawn: Object.freeze(roomPoint(120, 610)),
   initialFacing: 'right',
 });
 

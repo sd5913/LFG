@@ -51,7 +51,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Build
 
 ### Pose Shadow Lab handoff
 
-When the character is fully behind a display case and its blue frame is visible, press **Space** to open the pose-shadow challenge. Start the camera to grant browser-local pose detection, then hold the highlighted target pose to progress through the three statue-inspired tasks. The MediaPipe model and runtime are loaded from public hosting on first use; camera frames and landmarks are not recorded or uploaded by this app.
+When the character is fully behind a display case and its blue frame is visible, press **Space** to open that case's pose-shadow challenge; press **Space** again to leave it. Start the camera to grant browser-local pose detection, then hold the single target pose represented by that display case. On completion the app returns to the room automatically. The MediaPipe model and runtime are loaded from public hosting on first use; camera frames and landmarks are not recorded or uploaded by this app.
 
 Dependencies are pinned in `package.json` and `pnpm-lock.yaml`: React/React DOM 19.3.1, Vite 8.3.7 and Phaser 3.90.0. This deliberately uses the documented Phaser 3 API. The project does not require the experimental UI-kit ZIP or the full composite concept image at runtime.
 

@@ -6,9 +6,10 @@ import { sceneryPixels, opaqueRectangles } from './scenery-foreground.js';
 import { alphaMask, solidSamples, fullyCovered } from './occlusion.js';
 
 export default class Room1 extends Phaser.Scene {
-  constructor(onState) {
+  constructor(onState, resumeState = null) {
     super('Room1');
     this.onState = onState;
+    this.resumeState = resumeState;
     this.pressed = new Set();
     this.pressOrder = [];
     this.facing = PLAYER.initialFacing;
@@ -74,7 +75,10 @@ export default class Room1 extends Phaser.Scene {
       this.blockers.add(object);
     }
     this.physics.world.setBounds(WALKABLE.x, WALKABLE.y, WALKABLE.width, WALKABLE.height);
-    this.player = this.physics.add.sprite(PLAYER.spawn.x, PLAYER.spawn.y, `player-${this.facing}`)
+    const canResume = this.resumeState && Number.isFinite(this.resumeState.x) && Number.isFinite(this.resumeState.y);
+    if (canResume && PLAYER_ART[this.resumeState.facing]) this.facing = this.resumeState.facing;
+    const playerStart = canResume ? this.resumeState : PLAYER.spawn;
+    this.player = this.physics.add.sprite(playerStart.x, playerStart.y, `player-${this.facing}`)
       .setOrigin(0.5, 1).setCollideWorldBounds(true);
     this.player.body.setSize(PLAYER.bodyWidth, PLAYER.bodyHeight, false)
       .setOffset((PLAYER.textureSize - PLAYER.bodyWidth) / 2, PLAYER.textureSize - PLAYER.bodyHeight);
@@ -269,6 +273,11 @@ export default class Room1 extends Phaser.Scene {
     this.facing = PLAYER.initialFacing;
     this.player.setTexture(`player-${this.facing}`);
     this.publish({ facing: this.facing, moving: false });
+  }
+
+  getResumeState() {
+    if (!this.player) return null;
+    return { x: this.player.x, y: this.player.y, facing: this.facing };
   }
 
   toggleDebug() {

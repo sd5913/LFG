@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Phaser from 'phaser';
 import Room1 from './game/Room1.js';
@@ -6,13 +6,13 @@ import { GAME } from './game/config.js';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import './styles.css';
 
-function RoomExperience({ onPoseDemo }) {
+function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, onToggleCamera }) {
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
   useEffect(() => {
     let disposed = false;
-    const scene = new Room1(value => { if (!disposed) setState(value); });
+    const scene = new Room1(value => { if (!disposed) setState(value); }, resumeState);
     const game = new Phaser.Game({
       type: Phaser.CANVAS,
       parent: host.current,
@@ -36,23 +36,29 @@ function RoomExperience({ onPoseDemo }) {
 
   useEffect(() => {
     const openPoseDemo = event => {
-      if (event.code !== 'Space' || !state.hiddenExhibitId) return;
+      if (event.code !== 'Space' || event.repeat || !state.hiddenExhibitId) return;
       event.preventDefault();
-      onPoseDemo();
+      if (cameraStatus !== 'ready') return;
+      const scene = gameRef.current?.scene.getScene('Room1');
+      onPoseDemo(state.hiddenExhibitId, scene?.getResumeState() ?? null);
     };
     window.addEventListener('keydown', openPoseDemo);
     return () => window.removeEventListener('keydown', openPoseDemo);
-  }, [onPoseDemo, state.hiddenExhibitId]);
+  }, [cameraStatus, onPoseDemo, state.hiddenExhibitId]);
 
   return <main className="game-shell">
     <section className="stage-shell" aria-label="Museum Heist 游戏区域">
       <div ref={host} className="game-host" />
-      <div className="room-hud" aria-hidden="true">
+      <div className="room-hud">
         <span className="hud-title">MUSEUM HEIST</span><span className="hud-subtitle">NIGHT SHIFT / MOVEMENT STUDY</span>
         <span className="hud-room">ROOM 01</span><span className="hud-keys">W A S D</span>
         {[1,2,3].map((room,index)=><span className={`hud-node ${index===0?'active':''}`} style={{left:`${68.375+index*8.4375}%`}} key={room}>0{room}</span>)}
+        <button className={`hud-camera ${cameraStatus}`} type="button" onClick={onToggleCamera} disabled={cameraStatus === 'requesting'}>
+          {cameraStatus === 'ready' ? '关闭扫描摄像头' : cameraStatus === 'requesting' ? '正在开启…' : cameraStatus === 'error' ? '重试扫描摄像头' : '开启扫描摄像头'}
+        </button>
+        {cameraError && <span className="hud-camera-error">{cameraError}</span>}
       </div>
-      {state.hiddenExhibitId && <p className="room-pose-hint">安全遮蔽中 · 按空格键开始姿势扫描</p>}
+      {state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? '安全遮蔽中 · 按空格键开始姿势扫描' : '安全遮蔽中 · 请先点击上方“开启扫描摄像头”'}</p>}
       {!state.ready && <div className="loading-panel" role={state.error ? 'alert' : 'status'}>
         <span className="panel-index">ROOM 01</span>
         <p>{state.error || '正在准备展厅与角色素材…'}</p>
@@ -63,10 +69,66 @@ function RoomExperience({ onPoseDemo }) {
 }
 
 function App() {
-  const [showPoseDemo, setShowPoseDemo] = useState(false);
-  return showPoseDemo
-    ? <PoseShadowDemo />
-    : <RoomExperience onPoseDemo={() => setShowPoseDemo(true)} />;
+  const [activeExhibitId, setActiveExhibitId] = useState(null);
+  const [resumeState, setResumeState] = useState(null);
+  const cameraStreamRef = useRef(null);
+  const [cameraStatus, setCameraStatus] = useState('idle');
+  const [cameraError, setCameraError] = useState('');
+
+  const toggleCamera = useCallback(async () => {
+    if (cameraStatus === 'requesting') return;
+    if (cameraStatus === 'ready') {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+      setCameraError('');
+      setCameraStatus('idle');
+      return;
+    }
+    setCameraStatus('requesting');
+    setCameraError('');
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('当前浏览器不支持摄像头访问。');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 }, audio: false });
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = stream;
+      setCameraStatus('ready');
+    } catch (error) {
+      setCameraError(error?.message || '无法开启摄像头，请检查浏览器权限。');
+      setCameraStatus('error');
+    }
+  }, [cameraStatus]);
+
+  useEffect(() => () => cameraStreamRef.current?.getTracks().forEach((track) => track.stop()), []);
+
+  useEffect(() => {
+    if (!activeExhibitId) return undefined;
+    const exitPoseDemo = event => {
+      if (event.code !== 'Space' || event.repeat) return;
+      event.preventDefault();
+      setActiveExhibitId(null);
+    };
+    window.addEventListener('keydown', exitPoseDemo);
+    return () => window.removeEventListener('keydown', exitPoseDemo);
+  }, [activeExhibitId]);
+
+  if (activeExhibitId) return <PoseShadowDemo
+    exhibitId={activeExhibitId}
+    cameraStream={cameraStreamRef.current}
+    onComplete={() => {
+      setActiveExhibitId(null);
+    }}
+  />;
+
+  return <RoomExperience
+    resumeState={resumeState}
+    cameraStatus={cameraStatus}
+    cameraError={cameraError}
+    onToggleCamera={toggleCamera}
+    onPoseDemo={(exhibitId, playerState) => {
+      setResumeState(playerState);
+      setActiveExhibitId(exhibitId);
+    }}
+  />;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

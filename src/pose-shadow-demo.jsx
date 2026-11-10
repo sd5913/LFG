@@ -7,47 +7,81 @@ const HOLD_DURATION_MS = 2000;
 const JITTER_GRACE_MS = 220;
 const ASSET_ROOT = '/stealth-ui';
 
-const TARGET_ARM_CONFIGS = {
-  'hands-at-heart': { upper: [0, 0.9], forearm: [-0.85, -0.2] },
-  'holding-scroll': { upper: [0.05, 1], forearm: [-0.62, 0.38] },
-  'hand-on-head': { upper: [0.55, -0.5], forearm: [-0.55, -0.8], required: ['rightElbow', 'rightWrist'] },
-};
+// These guides and matching joints are authored from the four blue-frame
+// display images, rather than sharing the earlier rotating demo targets.
+const EXHIBIT_POSE_CONFIGS = Object.freeze({
+  'case-nw': {
+    title: '鸟首祈祷雕像', instruction: '双手在胸前交握，保持不动',
+    // Low, nearly central elbows make both palms meet at the sternum.
+    left: { upper: [-0.18, 0.98], forearm: [0.94, -0.34] },
+    right: { upper: [0.18, 0.98], forearm: [-0.94, -0.34] },
+  },
+  'case-sw': {
+    title: '持卷轴雕像', instruction: '双手在胸前捧起卷轴，保持不动',
+    // Unlike the prayer pose, elbows open out and each hand stays on one side
+    // of the imaginary scroll instead of meeting in the centre.
+    left: { upper: [-0.8, 0.6], forearm: [1, -0.1] },
+    right: { upper: [0.8, 0.6], forearm: [-1, -0.1] },
+  },
+  'case-ne': {
+    title: '星月抚额雕像', instruction: '左手轻扶额角，右手自然收于腹前',
+    // The raised hand stops beside the forehead, never above the head.
+    left: { upper: [-0.6, -0.42], forearm: [0.54, -0.84] },
+    right: { upper: [0.5, 0.76], forearm: [-0.86, -0.18] },
+    required: ['leftElbow', 'leftWrist'],
+  },
+  'case-se': {
+    title: '宝石抱臂雕像', instruction: '左臂斜搭右肩，右手自然垂于腹前',
+    // This statue has one arm across the chest and the other relaxed at the waist.
+    left: { upper: [0.48, 0.64], forearm: [0.55, -0.78] },
+    // Keep the resting hand visibly outside the crossed arm, avoiding overlap.
+    right: { upper: [0.48, 0.8], forearm: [-0.25, 0.97] },
+    required: ['leftElbow', 'leftWrist'],
+    // A slightly wider tolerance retains the same compact shoulder-touching
+    // gesture while accommodating ordinary elbow and wrist tracking jitter.
+    matchRadius: 0.58,
+  },
+});
 
-const TARGETS = [
-  { id: 'hands-at-heart', title: '护心雕像', instruction: '双手护在胸前，保持不动' },
-  { id: 'holding-scroll', title: '持卷轴雕像', instruction: '双手捧起卷轴，保持不动' },
-  { id: 'hand-on-head', title: '抚额雕像', instruction: '抬起右手扶额，保持不动' },
-];
+const TARGETS = Object.entries(EXHIBIT_POSE_CONFIGS)
+  .map(([id, { title, instruction }]) => ({ id, title, instruction }));
 
 function landmarkIsVisible(landmarks, index) {
   return landmarks[index] && (landmarks[index].visibility == null || landmarks[index].visibility > 0.45);
 }
 
 function getTargetGuide(width, height, target, landmarks) {
-  const config = TARGET_ARM_CONFIGS[target.id];
+  const config = EXHIBIT_POSE_CONFIGS[target.id];
   if (!config || !landmarks || ![0, 7, 8, 11, 12, 13, 14, 15, 16].every((index) => landmarkIsVisible(landmarks, index))) return null;
   const point = (index) => ({ x: (1 - landmarks[index].x) * width, y: landmarks[index].y * height });
   const points = { head: point(0), leftEar: point(7), rightEar: point(8), leftShoulder: point(11), rightShoulder: point(12) };
   if (landmarkIsVisible(landmarks, 23) && landmarkIsVisible(landmarks, 24)) { points.leftHip = point(23); points.rightHip = point(24); }
-  const center = { x: (points.leftShoulder.x + points.rightShoulder.x) / 2, y: (points.leftShoulder.y + points.rightShoulder.y) / 2 };
   const shoulderWidth = Math.hypot(points.rightShoulder.x - points.leftShoulder.x, points.rightShoulder.y - points.leftShoulder.y);
   const measuredUpper = (Math.hypot(points.leftShoulder.x - point(13).x, points.leftShoulder.y - point(13).y) + Math.hypot(points.rightShoulder.x - point(14).x, points.rightShoulder.y - point(14).y)) / 2;
   const measuredFore = (Math.hypot(point(13).x - point(15).x, point(13).y - point(15).y) + Math.hypot(point(14).x - point(16).x, point(14).y - point(16).y)) / 2;
-  const upperLength = Math.min(Math.max(measuredUpper, shoulderWidth * 0.42), shoulderWidth * 0.68);
-  const foreLength = Math.min(Math.max(measuredFore, shoulderWidth * 0.42), shoulderWidth * 0.68);
-  const upperSide = target.id === 'hands-at-heart' ? Math.min(0.58, Math.max(0.42, (shoulderWidth / upperLength) * 0.24)) : config.upper[0];
+  // Keep the authored guide compact. A very tall person standing close to the
+  // camera used to generate arms which ran outside the scan window.
+  const upperLength = Math.min(Math.max(measuredUpper, shoulderWidth * 0.36), shoulderWidth * 0.5);
+  const foreLength = Math.min(Math.max(measuredFore, shoulderWidth * 0.34), shoulderWidth * 0.48);
   const unit = ([x, y]) => { const length = Math.hypot(x, y); return { x: x / length, y: y / length }; };
-  const createArm = (shoulder, side) => {
-    const upper = unit([side * upperSide, config.upper[1]]);
-    const elbow = { x: shoulder.x + upper.x * upperLength, y: shoulder.y + upper.y * upperLength };
-    const fore = unit([side * config.forearm[0], config.forearm[1]]);
-    return { elbow, wrist: { x: elbow.x + fore.x * foreLength, y: elbow.y + fore.y * foreLength } };
+  const shoulderMidY = (points.leftShoulder.y + points.rightShoulder.y) / 2;
+  // The guide always remains from forehead to upper abdomen: this is the
+  // reliable part of the webcam frame even when the player is close to it.
+  const clampToScanBand = ({ x, y }) => ({
+    x,
+    y: Math.min(shoulderMidY + shoulderWidth * 0.62, Math.max(shoulderMidY - shoulderWidth * 0.52, y)),
+  });
+  const createArm = (shoulder, arm) => {
+    const upper = unit(arm.upper);
+    const elbow = clampToScanBand({ x: shoulder.x + upper.x * upperLength, y: shoulder.y + upper.y * upperLength });
+    const fore = unit(arm.forearm);
+    return { elbow, wrist: clampToScanBand({ x: elbow.x + fore.x * foreLength, y: elbow.y + fore.y * foreLength }) };
   };
-  const leftArm = config.required ? { elbow: point(13), wrist: point(15) } : createArm(points.leftShoulder, Math.sign(points.leftShoulder.x - center.x) || -1);
-  const rightArm = createArm(points.rightShoulder, Math.sign(points.rightShoulder.x - center.x) || 1);
+  const leftArm = createArm(points.leftShoulder, config.left);
+  const rightArm = createArm(points.rightShoulder, config.right);
   Object.assign(points, { leftElbow: leftArm.elbow, leftWrist: leftArm.wrist, rightElbow: rightArm.elbow, rightWrist: rightArm.wrist });
   const indexes = { leftElbow: 13, leftWrist: 15, rightElbow: 14, rightWrist: 16 };
-  const matchRadius = Math.max(28, shoulderWidth * 0.46);
+  const matchRadius = Math.max(28, shoulderWidth * (config.matchRadius ?? 0.46));
   const required = config.required ?? Object.keys(indexes);
   const matchedPoints = Object.fromEntries(required.map((name) => [name, Math.hypot(point(indexes[name]).x - points[name].x, point(indexes[name]).y - points[name].y) < matchRadius]));
   return { points, matchedPoints, isMatched: Object.values(matchedPoints).every(Boolean) };
@@ -71,20 +105,20 @@ function drawGuide(context, width, target, guide) {
 }
 
 function drawStaticGhost(context, width, height, target) {
-  const config = TARGET_ARM_CONFIGS[target.id];
+  const config = EXHIBIT_POSE_CONFIGS[target.id];
   const shoulderY = height * 0.44;
   const shoulders = [{ x: width * 0.39, y: shoulderY }, { x: width * 0.61, y: shoulderY }];
-  const upperLength = width * 0.15;
-  const foreLength = width * 0.15;
-  const upperSide = target.id === 'hands-at-heart' ? 0.46 : config.upper[0];
+  const upperLength = width * 0.105;
+  const foreLength = width * 0.1;
   const unit = ([x, y]) => { const length = Math.hypot(x, y); return { x: x / length, y: y / length }; };
-  const arm = (shoulder, side) => {
-    const upper = unit([side * upperSide, config.upper[1]]);
-    const elbow = { x: shoulder.x + upper.x * upperLength, y: shoulder.y + upper.y * upperLength };
-    const fore = unit([side * config.forearm[0], config.forearm[1]]);
-    return { elbow, wrist: { x: elbow.x + fore.x * foreLength, y: elbow.y + fore.y * foreLength } };
+  const clampToScanBand = ({ x, y }) => ({ x, y: Math.min(height * 0.67, Math.max(height * 0.27, y)) });
+  const arm = (shoulder, definition) => {
+    const upper = unit(definition.upper);
+    const elbow = clampToScanBand({ x: shoulder.x + upper.x * upperLength, y: shoulder.y + upper.y * upperLength });
+    const fore = unit(definition.forearm);
+    return { elbow, wrist: clampToScanBand({ x: elbow.x + fore.x * foreLength, y: elbow.y + fore.y * foreLength }) };
   };
-  const left = arm(shoulders[0], -1); const right = arm(shoulders[1], 1);
+  const left = arm(shoulders[0], config.left); const right = arm(shoulders[1], config.right);
   const points = { head: { x: width / 2, y: height * 0.23 }, leftEar: { x: width * 0.47, y: height * 0.25 }, rightEar: { x: width * 0.53, y: height * 0.25 }, leftShoulder: shoulders[0], rightShoulder: shoulders[1], leftElbow: left.elbow, leftWrist: left.wrist, rightElbow: right.elbow, rightWrist: right.wrist, leftHip: { x: width * 0.44, y: height * 0.72 }, rightHip: { x: width * 0.56, y: height * 0.72 } };
   drawGuide(context, width, target, { points, matchedPoints: {} });
 }
@@ -148,7 +182,8 @@ function drawPose(canvas, landmarks, isMatching, target, guide) {
 
 function asset(name) { return `${ASSET_ROOT}/${name}`; }
 
-export function PoseShadowDemo() {
+export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
+  const target = TARGETS.find(({ id }) => id === exhibitId) ?? TARGETS[0];
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -158,31 +193,16 @@ export function PoseShadowDemo() {
   const holdStartedAtRef = useRef(null);
   const lastMatchedAtRef = useRef(0);
   const lastProgressRef = useRef(0);
-  const targetIndexRef = useRef(0);
+  const targetRef = useRef(target);
+  const onCompleteRef = useRef(onComplete);
   const actionStartedAtRef = useRef(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
-  const [targetIndex, setTargetIndex] = useState(0);
-  const [completedTasks, setCompletedTasks] = useState(0);
   const [alarm, setAlarm] = useState(40);
   const [status, setStatus] = useState('准备开始扫描');
   const [error, setError] = useState('');
   const [scanSeconds, setScanSeconds] = useState(10);
-
-  const stopCamera = useCallback(() => {
-    cancelAnimationFrame(animationFrameRef.current);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    if (canvasRef.current) drawPose(canvasRef.current, null, false, TARGETS[targetIndexRef.current]);
-    holdStartedAtRef.current = null;
-    lastMatchedAtRef.current = 0;
-    lastProgressRef.current = 0;
-    actionStartedAtRef.current = null;
-    setHoldProgress(0); setIsMatching(false); setIsRunning(false); setStatus('扫描已暂停');
-    setScanSeconds(10);
-  }, []);
 
   const detectFrame = useCallback(() => {
     const video = videoRef.current;
@@ -192,7 +212,7 @@ export function PoseShadowDemo() {
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime !== lastVideoTimeRef.current) {
       lastVideoTimeRef.current = video.currentTime;
       const landmarks = landmarker.detectForVideo(video, performance.now()).landmarks[0];
-      const target = TARGETS[targetIndexRef.current];
+      const target = targetRef.current;
       const guide = getTargetGuide(canvas.width, canvas.height, target, landmarks);
       const matching = Boolean(guide?.isMatched);
       drawPose(canvas, landmarks, matching, target, guide);
@@ -220,15 +240,11 @@ export function PoseShadowDemo() {
         if (Math.abs(lastProgressRef.current - progress) > 0.8) { lastProgressRef.current = progress; setHoldProgress(progress); }
         setStatus('姿势正确，继续保持');
         if (progress >= 100) {
-          holdStartedAtRef.current = null; lastProgressRef.current = 0; setHoldProgress(0);
-          const nextIndex = (targetIndexRef.current + 1) % TARGETS.length;
-          targetIndexRef.current = nextIndex;
-          actionStartedAtRef.current = now;
-          setScanSeconds(10);
-          setTargetIndex(nextIndex);
-          setCompletedTasks((value) => value + 1);
+          cancelAnimationFrame(animationFrameRef.current);
           setAlarm((value) => Math.max(0, value - 10));
-          setStatus('伪装成功！下一项姿势任务已开始。');
+          setStatus('伪装成功！正在返回展厅…');
+          onCompleteRef.current?.(exhibitId);
+          return;
         }
       } else {
         const withinGrace = holdStartedAtRef.current && now - lastMatchedAtRef.current < JITTER_GRACE_MS;
@@ -245,38 +261,43 @@ export function PoseShadowDemo() {
     animationFrameRef.current = requestAnimationFrame(detectFrame);
   }, []);
 
-  const startCamera = useCallback(async () => {
+  const startScanner = useCallback(async () => {
     setError(''); setStatus('正在连接扫描器…');
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('当前浏览器不支持摄像头访问。');
-      const [{ FilesetResolver, PoseLandmarker }, stream] = await Promise.all([
-        import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`),
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 }, audio: false }),
-      ]);
+      if (!cameraStream?.active) throw new Error('摄像头尚未开启，请返回主地图上方栏开启扫描摄像头。');
+      const { FilesetResolver, PoseLandmarker } = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`);
       const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
       if (!landmarkerRef.current) {
         const options = { baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.55, minPosePresenceConfidence: 0.55, minTrackingConfidence: 0.5 };
         try { landmarkerRef.current = await PoseLandmarker.createFromOptions(vision, options); }
         catch { landmarkerRef.current = await PoseLandmarker.createFromOptions(vision, { ...options, baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' } }); }
       }
-      streamRef.current = stream; videoRef.current.srcObject = stream;
+      streamRef.current = cameraStream; videoRef.current.srcObject = cameraStream;
       await videoRef.current.play();
       actionStartedAtRef.current = performance.now();
       setScanSeconds(10);
-      setIsRunning(true); setStatus(`扫描灯靠近 · 模仿${TARGETS[targetIndexRef.current].title}`);
+      setIsRunning(true); setStatus(`扫描灯靠近 · 模仿${targetRef.current.title}`);
       animationFrameRef.current = requestAnimationFrame(detectFrame);
     } catch (caughtError) {
-      streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current = null;
+      streamRef.current = null;
       setError(caughtError.message || '无法启动摄像头。'); setStatus('扫描器连接失败');
     }
-  }, [detectFrame]);
+  }, [cameraStream, detectFrame]);
 
-  useEffect(() => () => { cancelAnimationFrame(animationFrameRef.current); streamRef.current?.getTracks().forEach((track) => track.stop()); landmarkerRef.current?.close(); }, []);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => {
-    if (!isRunning && canvasRef.current) drawPose(canvasRef.current, null, false, TARGETS[targetIndex]);
-  }, [isRunning, targetIndex]);
-
-  const target = TARGETS[targetIndex];
+    startScanner();
+    return () => {
+      cancelAnimationFrame(animationFrameRef.current);
+      streamRef.current = null;
+      if (videoRef.current) { videoRef.current.pause(); videoRef.current.srcObject = null; }
+      landmarkerRef.current?.close();
+      landmarkerRef.current = null;
+    };
+  }, [startScanner]);
+  useEffect(() => {
+    if (!isRunning && canvasRef.current) drawPose(canvasRef.current, null, false, target);
+  }, [isRunning, target]);
 
   return (
     <main className="stealth-shell">
@@ -310,19 +331,19 @@ export function PoseShadowDemo() {
 
           <section className="pose-screen">
             <img src={asset('pose_screen_panel.png')} alt="" />
-            <p className="target-step">目标动作 {String(targetIndex + 1).padStart(2, '0')} / {String(TARGETS.length).padStart(2, '0')} · {target.title}</p>
+            <p className="target-step">目标动作 01 / 01 · {target.title}</p>
             <canvas ref={canvasRef} width="1124" height="596" aria-label="目标姿势虚影与实时关节点识别" />
             <div className="pose-progress" aria-label={`姿势匹配进度 ${Math.round(holdProgress)}%`}>
               <span>姿势匹配进度</span>
               <div className="pose-meter"><img src={asset('pose_progress_frame.png')} alt="" /><img className="meter-fill" style={{ clipPath: `inset(0 ${100 - holdProgress}% 0 0)` }} src={asset('pose_progress_fill_segments.png')} alt="" /></div>
               <strong>{Math.round(holdProgress)}%</strong>
             </div>
-            {!isRunning && <p className="scan-hint">启动扫描后，虚影会贴合你的站位</p>}
+            {!isRunning && <p className="scan-hint">{error ? '请返回主地图上方栏开启摄像头' : '正在接入已开启的扫描摄像头…'}</p>}
           </section>
 
           <footer className="result-banner">
             <img src={asset('result_banner_blank.png')} alt="" />
-            <div className="result-copy"><span>成功：获得安全窗口</span><button type="button" onClick={isRunning ? stopCamera : startCamera}>{isRunning ? '暂停扫描' : '启动扫描'}</button><em>失败：警戒上升</em></div>
+            <div className="result-copy"><span>成功：获得安全窗口</span><b className="scan-auto-label">{isRunning ? '扫描中' : '等待摄像头'}</b><em>失败：警戒上升</em></div>
           </footer>
           {error && <p className="error-message">{error}</p>}
         </section>
