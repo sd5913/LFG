@@ -33,6 +33,31 @@ export const PLAYER_ART = Object.freeze({
   right: { file: 'assets/player/right.png', bounds: [103, 65, 398, 468], footX: 314 },
 });
 
+export const GUARD = Object.freeze({
+  speed: PLAYER.speed * 1.3, textureSize: 144, artHeight: 138, bodyWidth: 34, bodyHeight: 20,
+  spawn: Object.freeze(roomPoint(1270, 560)), initialFacing: 'left',
+  visionRange: 285 * 1.3, visionHalfAngle: Math.PI / 5,
+  // A closed, obstacle-free route around the four exhibits. The guard chooses
+  // either direction at each node, so it roams the whole gallery without
+  // trying to cut through a display case.
+  patrolPoints: Object.freeze([
+    Object.freeze(roomPoint(1400, 700)), Object.freeze(roomPoint(1400, 500)),
+    Object.freeze(roomPoint(1200, 300)), Object.freeze(roomPoint(900, 300)),
+    Object.freeze(roomPoint(600, 300)), Object.freeze(roomPoint(300, 300)),
+    Object.freeze(roomPoint(150, 400)), Object.freeze(roomPoint(150, 650)),
+    Object.freeze(roomPoint(300, 650)), Object.freeze(roomPoint(700, 650)),
+    Object.freeze(roomPoint(900, 650)), Object.freeze(roomPoint(1400, 650)),
+  ]),
+});
+
+// Original four-direction guard sprites, cropped to their opaque art bounds.
+export const GUARD_ART = Object.freeze({
+  right: { file: 'assets/guard/right.png', bounds: [155, 69, 287, 460], footX: 298 },
+  down:  { file: 'assets/guard/down.png',  bounds: [140, 71, 264, 466], footX: 272 },
+  up:    { file: 'assets/guard/up.png',    bounds: [117, 21, 251, 490], footX: 243 },
+  left:  { file: 'assets/guard/left.png',  bounds: [167, 69, 287, 460], footX: 311 },
+});
+
 export const WALKABLE = Object.freeze(roomRect({ x: 62, y: 195, width: 1546, height: 670 }));
 
 export const DISPLAY_CASES = Object.freeze([

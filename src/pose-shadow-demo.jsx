@@ -4,6 +4,7 @@ const TASKS_VERSION = '0.10.14';
 const WASM_ROOT = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}/wasm`;
 const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 const HOLD_DURATION_MS = 2000;
+const SCAN_DURATION_MS = 20000;
 const JITTER_GRACE_MS = 220;
 const ASSET_ROOT = '/stealth-ui';
 
@@ -186,7 +187,7 @@ function drawPose(canvas, landmarks, isMatching, target, guide) {
 
 function asset(name) { return `${ASSET_ROOT}/${name}`; }
 
-export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
+export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel = 0 }) {
   const target = TARGETS.find(({ id }) => id === exhibitId) ?? TARGETS[0];
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -203,10 +204,9 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
   const [isRunning, setIsRunning] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
-  const [alarm, setAlarm] = useState(40);
   const [status, setStatus] = useState('准备开始扫描');
   const [error, setError] = useState('');
-  const [scanSeconds, setScanSeconds] = useState(10);
+  const [scanSeconds, setScanSeconds] = useState(20);
 
   const detectFrame = useCallback(() => {
     const video = videoRef.current;
@@ -224,17 +224,12 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
       const now = performance.now();
       actionStartedAtRef.current ??= now;
       const elapsed = now - actionStartedAtRef.current;
-      const nextSecond = Math.max(0, Math.ceil((10000 - elapsed) / 1000));
+      const nextSecond = Math.max(0, Math.ceil((SCAN_DURATION_MS - elapsed) / 1000));
       setScanSeconds((current) => current === nextSecond ? current : nextSecond);
-      if (elapsed >= 10000) {
-        actionStartedAtRef.current = now;
-        holdStartedAtRef.current = null;
-        lastProgressRef.current = 0;
-        setHoldProgress(0);
-        setScanSeconds(10);
-        setAlarm((value) => Math.min(100, value + 10));
-        setStatus('扫描超时，警戒上升；请重新伪装');
-        animationFrameRef.current = requestAnimationFrame(detectFrame);
+      if (elapsed >= SCAN_DURATION_MS) {
+        cancelAnimationFrame(animationFrameRef.current);
+        setStatus('扫描超时，你被捕了。');
+        onCompleteRef.current?.({ exhibitId, success: false, reason: 'timeout' });
         return;
       }
       if (matching) {
@@ -245,9 +240,8 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
         setStatus('姿势正确，继续保持');
         if (progress >= 100) {
           cancelAnimationFrame(animationFrameRef.current);
-          setAlarm((value) => Math.max(0, value - 10));
           setStatus('伪装成功！正在返回展厅…');
-          onCompleteRef.current?.(exhibitId);
+          onCompleteRef.current?.({ exhibitId, success: true });
           return;
         }
       } else {
@@ -279,7 +273,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
       streamRef.current = cameraStream; videoRef.current.srcObject = cameraStream;
       await videoRef.current.play();
       actionStartedAtRef.current = performance.now();
-      setScanSeconds(10);
+      setScanSeconds(20);
       setIsRunning(true); setStatus(`扫描灯靠近 · 模仿${targetRef.current.title}`);
       animationFrameRef.current = requestAnimationFrame(detectFrame);
     } catch (caughtError) {
@@ -309,21 +303,22 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete }) {
         <img className="museum-backplate" src={asset('museum_scene_backplate.png')} alt="" />
         <div className="scene-dim" />
 
-        <header className="top-hud">
-          <img src={asset('top_hud_background.png')} alt="" />
-          <div className="alarm-readout">
-            <img className="alarm-siren" src={asset('alarm_siren.png')} alt="" />
-            <span className="alarm-copy">警戒<strong>{alarm}%</strong></span>
-            <div className="alarm-meter" aria-label={`警戒 ${alarm}%`}>
+        <header className="top-hud gameplay-hud pose-gameplay-hud">
+          <img className="gameplay-hud-background" src={asset('top_hud_background.png')} alt="" />
+          <div className="gameplay-alert" aria-label={`暂停中的警戒 ${Math.round(alertLevel)}%`}>
+            <img className="gameplay-siren" src={asset('alarm_siren.png')} alt="" />
+            <span className="gameplay-alert-copy">警戒<strong>{Math.round(alertLevel)}%</strong></span>
+            <div className="gameplay-meter">
               <img src={asset('alarm_meter_frame.png')} alt="" />
-              <img className="meter-fill" style={{ clipPath: `inset(0 ${100 - alarm}% 0 0)` }} src={asset('alarm_meter_fill_segments.png')} alt="" />
+              <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - alertLevel}% 0 0)` }} src={asset('alarm_meter_fill_segments.png')} alt="" />
             </div>
           </div>
-          <div className="route-readout" aria-label="潜入路线">
-            <img src={asset('room_house.png')} alt="起点房间" />
-            <i /><img className="route-player" src={asset('player_marker.png')} alt="当前位置" />
-            <i /><img src={asset('room_house.png')} alt="下一个房间" />
-            <i /><img className="treasure" src={asset('treasure_chest.png')} alt="宝箱" />
+          <div className="gameplay-route" aria-label="潜入路线：当前位于第三展厅">
+            {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === 3 ? 'current' : ''}`} key={room}>
+              <img src={asset('room_house.png')} alt={`第 ${room} 个房间`} />
+              {room === 3 && <img className="gameplay-player-marker" src={asset('player_marker.png')} alt="小偷当前位置" />}
+            </div>)}
+            <img className="gameplay-treasure" src={asset('treasure_chest.png')} alt="最终宝箱" />
           </div>
         </header>
 

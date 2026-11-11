@@ -49,15 +49,31 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
   return <main className="game-shell">
     <section className="stage-shell" aria-label="Museum Heist 游戏区域">
       <div ref={host} className="game-host" />
-      <div className="room-hud">
-        <span className="hud-title">MUSEUM HEIST</span><span className="hud-subtitle">NIGHT SHIFT / MOVEMENT STUDY</span>
-        <span className="hud-room">ROOM 01</span><span className="hud-keys">W A S D</span>
-        {[1,2,3].map((room,index)=><span className={`hud-node ${index===0?'active':''}`} style={{left:`${68.375+index*8.4375}%`}} key={room}>0{room}</span>)}
+      <div className="room-hud gameplay-hud">
+        <img className="gameplay-hud-background" src="/stealth-ui/top_hud_background.png" alt="" />
+        <div className="gameplay-alert" aria-label={`警戒 ${Math.round(state.alertLevel ?? 0)}%`}>
+          <img className="gameplay-siren" src="/stealth-ui/alarm_siren.png" alt="" />
+          <span className="gameplay-alert-copy">警戒<strong>{Math.round(state.alertLevel ?? 0)}%</strong></span>
+          <div className="gameplay-meter">
+            <img src="/stealth-ui/alarm_meter_frame.png" alt="" />
+            <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - (state.alertLevel ?? 0)}% 0 0)` }} src="/stealth-ui/alarm_meter_fill_segments.png" alt="" />
+          </div>
+        </div>
+        <div className="gameplay-route" aria-label="潜入路线：当前位于第三展厅">
+          {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === 3 ? 'current' : ''}`} key={room}>
+            <img src="/stealth-ui/room_house.png" alt={`第 ${room} 个房间`} />
+            {room === 3 && <img className="gameplay-player-marker" src="/stealth-ui/player_marker.png" alt="小偷当前位置" />}
+          </div>)}
+          <img className="gameplay-treasure" src="/stealth-ui/treasure_chest.png" alt="最终宝箱" />
+        </div>
         <button className={`hud-camera ${cameraStatus}`} type="button" onClick={onToggleCamera} disabled={cameraStatus === 'requesting'}>
           {cameraStatus === 'ready' ? '关闭扫描摄像头' : cameraStatus === 'requesting' ? '正在开启…' : cameraStatus === 'error' ? '重试扫描摄像头' : '开启扫描摄像头'}
         </button>
         {cameraError && <span className="hud-camera-error">{cameraError}</span>}
       </div>
+      {state.gameOver && <section className="game-over-panel" role="alert">
+        <span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button>
+      </section>}
       {state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? '安全遮蔽中 · 按空格键开始姿势扫描' : '安全遮蔽中 · 请先点击上方“开启扫描摄像头”'}</p>}
       {!state.ready && <div className="loading-panel" role={state.error ? 'alert' : 'status'}>
         <span className="panel-index">ROOM 01</span>
@@ -70,6 +86,7 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
 
 function App() {
   const [activeExhibitId, setActiveExhibitId] = useState(null);
+  const [gameOver, setGameOver] = useState(false);
   const [resumeState, setResumeState] = useState(null);
   const cameraStreamRef = useRef(null);
   const [cameraStatus, setCameraStatus] = useState('idle');
@@ -111,10 +128,22 @@ function App() {
     return () => window.removeEventListener('keydown', exitPoseDemo);
   }, [activeExhibitId]);
 
+  if (gameOver) return <main className="game-shell"><section className="stage-shell game-over-stage">
+    <section className="game-over-panel" role="alert"><span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button></section>
+  </section></main>;
+
   if (activeExhibitId) return <PoseShadowDemo
     exhibitId={activeExhibitId}
     cameraStream={cameraStreamRef.current}
-    onComplete={() => {
+    alertLevel={resumeState?.alertLevel ?? 0}
+    onComplete={(result) => {
+      if (result?.success) setResumeState((previous) => previous ? {
+        ...previous,
+        // A successful statue disguise breaks the guard's lock-on. Room1
+        // restarts that guard at its saved position with a new patrol target.
+        guard: previous.guard ? { ...previous.guard, mode: 'patrol' } : previous.guard,
+      } : previous);
+      if (result?.reason === 'timeout') setGameOver(true);
       setActiveExhibitId(null);
     }}
   />;

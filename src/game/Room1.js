@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
+import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, GUARD, GUARD_ART, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
 import { KEY_DIRECTIONS, movementIntent } from './movement.js';
 import { plantPixels } from './plant-foreground.js';
 import { sceneryPixels, opaqueRectangles } from './scenery-foreground.js';
@@ -15,6 +15,8 @@ export default class Room1 extends Phaser.Scene {
     this.facing = PLAYER.initialFacing;
     this.debugVisible = false;
     this.failedAssets = [];
+    this.alertLevel = Phaser.Math.Clamp(resumeState?.alertLevel ?? 0, 0, 100);
+    this.gameOver = false;
   }
 
   preload() {
@@ -28,6 +30,7 @@ export default class Room1 extends Phaser.Scene {
     for (const [direction, art] of Object.entries(PLAYER_ART)) {
       this.load.image(`source-${direction}`, base + art.file);
     }
+    for (const [direction, art] of Object.entries(GUARD_ART)) this.load.image(`guard-source-${direction}`, base + art.file);
     this.load.on('loaderror', file => this.failedAssets.push(file.key));
   }
 
@@ -85,9 +88,11 @@ export default class Room1 extends Phaser.Scene {
     this.player.body.setAllowGravity(false);
     this.player.setPushable(false);
     this.collider = this.physics.add.collider(this.player, this.blockers);
+    this.createGuard();
     this.debugGraphics = this.add.graphics().setDepth(20000);
     this.installInput();
-    this.publish({ ready: true, error: '', facing: this.facing, moving: false, debug: false, hiddenExhibitId: null });
+    this.publish({ ready: true, error: '', facing: this.facing, moving: false, debug: false,
+      hiddenExhibitId: null, alertLevel: this.alertLevel, gameOver: false });
   }
 
   createTextures() {
@@ -117,6 +122,18 @@ export default class Room1 extends Phaser.Scene {
       this.playerSamples[direction] = solidSamples(alphaMask(
         context.getImageData(0, 0, PLAYER.textureSize, PLAYER.textureSize).data,
         PLAYER.textureSize, PLAYER.textureSize));
+    }
+    for (const [direction, art] of Object.entries(GUARD_ART)) {
+      const texture = this.textures.createCanvas(`guard-${direction}`, GUARD.textureSize, GUARD.textureSize);
+      const context = texture.getContext();
+      context.imageSmoothingEnabled = false;
+      const [x, y, width, height] = art.bounds;
+      const scale = GUARD.artHeight / height;
+      context.drawImage(this.textures.get(`guard-source-${direction}`).getSourceImage(), x, y, width, height,
+        GUARD.textureSize / 2 - (art.footX - x) * scale, GUARD.textureSize - GUARD.artHeight,
+        width * scale, GUARD.artHeight);
+      texture.refresh();
+      texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
     const [x, y, width, height] = SCULPTURE_ART.bounds;
     const canvas = document.createElement('canvas');
@@ -222,6 +239,91 @@ export default class Room1 extends Phaser.Scene {
     // scales while the room and sprite images retain nearest-neighbour sampling.
   }
 
+  createGuard() {
+    const saved = this.resumeState?.guard;
+    this.guardFacing = GUARD_ART[saved?.facing] ? saved.facing : GUARD.initialFacing;
+    const start = saved ?? GUARD.spawn;
+    this.guard = this.physics.add.sprite(start.x, start.y, `guard-${this.guardFacing}`).setOrigin(0.5, 1)
+      .setCollideWorldBounds(true).setPushable(false);
+    this.guard.body.setSize(GUARD.bodyWidth, GUARD.bodyHeight, false)
+      .setOffset((GUARD.textureSize - GUARD.bodyWidth) / 2, GUARD.textureSize - GUARD.bodyHeight);
+    this.guard.body.setAllowGravity(false);
+    this.physics.add.collider(this.guard, this.blockers);
+    this.guardState = saved?.mode === 'chase' ? 'chase' : 'patrol';
+    this.guardPatrolIndex = 1;
+    this.guardPreviousPosition = { x: this.guard.x, y: this.guard.y };
+    this.guardStuckAt = 0;
+    this.pickPatrolTarget();
+    this.guardVision = this.add.graphics();
+  }
+
+  pickPatrolTarget() {
+    const count = GUARD.patrolPoints.length;
+    // Pick clockwise or anti-clockwise at a safe route node. Choosing any
+    // arbitrary room point would send the guard directly into display cases.
+    const step = Math.random() < 0.5 ? -1 : 1;
+    this.guardPatrolIndex = (this.guardPatrolIndex + step + count) % count;
+    this.guardTarget = GUARD.patrolPoints[this.guardPatrolIndex];
+  }
+
+  updateGuard(time) {
+    const visible = this.playerInGuardVision();
+    if (visible) {
+      this.guardState = 'chase';
+    }
+    // Once the guard has detected the thief, the chase persists even if the
+    // thief steps behind an exhibit. Only a completed pose scan resets it.
+    const target = this.guardState === 'chase' ? this.player : this.guardTarget;
+    if (target && Phaser.Math.Distance.Between(this.guard.x, this.guard.y, target.x, target.y) < 14) {
+      if (this.guardState === 'patrol') this.pickPatrolTarget();
+      this.guard.setVelocity(0, 0);
+    } else if (target) {
+      const angle = Phaser.Math.Angle.Between(this.guard.x, this.guard.y, target.x, target.y);
+      this.guard.setVelocity(Math.cos(angle) * GUARD.speed, Math.sin(angle) * GUARD.speed);
+      const dx = Math.cos(angle), dy = Math.sin(angle);
+      const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      if (facing !== this.guardFacing) { this.guardFacing = facing; this.guard.setTexture(`guard-${facing}`); }
+    }
+    this.guard.setDepth(this.guard.y);
+    const moved = Phaser.Math.Distance.Between(this.guard.x, this.guard.y,
+      this.guardPreviousPosition.x, this.guardPreviousPosition.y);
+    if (this.guardState === 'patrol' && target && moved < 0.5 &&
+      Phaser.Math.Distance.Between(this.guard.x, this.guard.y, target.x, target.y) > 24) {
+      this.guardStuckAt ||= time;
+      if (time - this.guardStuckAt > 500) { this.pickPatrolTarget(); this.guardStuckAt = 0; }
+    } else this.guardStuckAt = 0;
+    this.guardPreviousPosition = { x: this.guard.x, y: this.guard.y };
+    // Red is the guard's alert state, not only the instant line-of-sight
+    // check. It remains red through the pursuit until a pose scan succeeds.
+    const alert = visible || this.guardState === 'chase';
+    this.drawGuardVision(alert);
+    this.publish({ guardMode: this.guardState, guardSeeing: visible, guardAlert: alert });
+  }
+
+  playerInGuardVision() {
+    if (this.hiddenExhibitId) return false;
+    const dx = this.player.x - this.guard.x, dy = this.player.y - this.guard.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance > GUARD.visionRange || distance < 1) return false;
+    const directions = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+    if (Math.abs(Phaser.Math.Angle.Wrap(Phaser.Math.Angle.Between(this.guard.x, this.guard.y, this.player.x, this.player.y) - directions[this.guardFacing])) > GUARD.visionHalfAngle) return false;
+    const ray = new Phaser.Geom.Line(this.guard.x, this.guard.y - GUARD.textureSize * 0.62, this.player.x, this.player.y - PLAYER.bodyHeight / 2);
+    return !OBSTACLES.some(rect => Phaser.Geom.Intersects.LineToRectangle(ray, new Phaser.Geom.Rectangle(rect.x, rect.y, rect.width, rect.height)));
+  }
+
+  drawGuardVision(seesPlayer) {
+    const angleByFacing = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+    const angle = angleByFacing[this.guardFacing];
+    const origin = { x: this.guard.x, y: this.guard.y - GUARD.textureSize * 0.62 };
+    const left = { x: origin.x + Math.cos(angle - GUARD.visionHalfAngle) * GUARD.visionRange, y: origin.y + Math.sin(angle - GUARD.visionHalfAngle) * GUARD.visionRange };
+    const right = { x: origin.x + Math.cos(angle + GUARD.visionHalfAngle) * GUARD.visionRange, y: origin.y + Math.sin(angle + GUARD.visionHalfAngle) * GUARD.visionRange };
+    this.guardVision.clear().fillStyle(seesPlayer ? 0xef5b57 : 0xf7f3df, seesPlayer ? 0.34 : 0.19)
+      .fillTriangle(origin.x, origin.y, left.x, left.y, right.x, right.y)
+      .lineStyle(2, seesPlayer ? 0xff8173 : 0xffffff, seesPlayer ? 0.82 : 0.55)
+      .lineBetween(origin.x, origin.y, left.x, left.y).lineBetween(origin.x, origin.y, right.x, right.y)
+      .setDepth(this.guard.y - 0.2);
+  }
+
   installInput() {
     const canvas = this.game.canvas;
     canvas.tabIndex = 0;
@@ -277,7 +379,9 @@ export default class Room1 extends Phaser.Scene {
 
   getResumeState() {
     if (!this.player) return null;
-    return { x: this.player.x, y: this.player.y, facing: this.facing };
+    return { x: this.player.x, y: this.player.y, facing: this.facing, alertLevel: this.alertLevel, guard: this.guard && {
+      x: this.guard.x, y: this.guard.y, facing: this.guardFacing, mode: this.guardState,
+    } };
   }
 
   toggleDebug() {
@@ -292,8 +396,8 @@ export default class Room1 extends Phaser.Scene {
     }
   }
 
-  update() {
-    if (!this.player) return;
+  update(time, delta) {
+    if (!this.player || this.gameOver) return;
     const input = movementIntent(this.pressed, this.pressOrder, PLAYER.speed, this.facing);
     this.player.setVelocity(input.vx, input.vy);
     if (input.facing !== this.facing) {
@@ -302,8 +406,26 @@ export default class Room1 extends Phaser.Scene {
     }
     this.player.setDepth(this.player.y);
     this.updateExhibitHint();
+    this.updateGuard(time);
+    this.updateAlertLevel(delta);
     this.publish({ facing: this.facing, moving: input.vx !== 0 || input.vy !== 0 });
     this.drawDebug();
+  }
+
+  updateAlertLevel(delta) {
+    const seconds = Math.min(delta / 1000, 0.1);
+    const rate = this.guardState === 'chase' ? 16 : -7;
+    this.alertLevel = Phaser.Math.Clamp(this.alertLevel + rate * seconds, 0, 100);
+    if (this.alertLevel >= 100) {
+      this.alertLevel = 100;
+      this.gameOver = true;
+      this.clearInput();
+      this.guard?.setVelocity(0, 0);
+      this.physics.pause();
+      this.publish({ alertLevel: this.alertLevel, gameOver: true });
+      return;
+    }
+    this.publish({ alertLevel: this.alertLevel });
   }
 
   updateExhibitHint() {

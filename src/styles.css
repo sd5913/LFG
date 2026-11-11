@@ -18,6 +18,30 @@ body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; backgro
 .hud-camera { position: absolute; top: 18%; left: 17.2%; z-index: 2; min-height: 2.2em; border: 1px solid #8facb6; padding: .28em .55em; background: #102a34e8; color: #e7d4a8; font: 700 clamp(5px, .78cqw, 12px) ui-monospace, monospace; letter-spacing: .03em; pointer-events: auto; cursor: pointer; }
 .hud-camera:hover:not(:disabled) { border-color: #f3dcaa; background: #1b3b47; }.hud-camera.ready { border-color: #82c7a2; color: #a9e7bf; }.hud-camera:disabled { opacity: .9; }
 .hud-camera-error { top: 68%; left: 13.2%; max-width: 23%; color: #ef9b80; font-size: clamp(4px, .58cqw, 9px); text-align: left; }
+.gameplay-hud { height: 10.4%; font-family: 'Noto Sans SC', ui-monospace, monospace; }
+.gameplay-hud-background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; image-rendering: pixelated; }
+.gameplay-alert { position: absolute; top: 9%; left: 2.3%; display: flex; align-items: center; gap: .55%; width: 29%; height: 80%; }
+.gameplay-alert img, .gameplay-route img { image-rendering: pixelated; }
+.gameplay-siren { width: 18%; height: 90%; object-fit: contain; }
+.gameplay-alert-copy { position: static !important; display: flex; flex-direction: column; align-items: center; width: 18%; color: #f7dba6; font-size: clamp(7px, 1.6cqw, 26px); font-weight: 900; line-height: .98 !important; text-shadow: 2px 2px #213844; }
+.gameplay-alert-copy strong { margin-top: .14em; font-size: 1.05em; }
+.gameplay-meter { position: relative; width: 54%; aspect-ratio: 240 / 52; }
+.gameplay-meter > img:first-child { width: 100%; height: 100%; }
+.gameplay-meter-fill { position: absolute !important; inset: 21% 5%; width: 90%; height: 58%; object-fit: fill; }
+.gameplay-route { position: absolute; top: 6%; right: 3%; display: flex; align-items: center; justify-content: space-between; width: 50%; height: 76%; isolation: isolate; overflow: visible; }
+.gameplay-route::before { position: absolute; z-index: -1; top: 49%; left: 7%; right: 7%; height: 3px; content: ''; background: #e8c994; box-shadow: 0 1px #6a4636; }
+.gameplay-room-node { position: relative; z-index: 1; display: grid; width: 12%; height: 100%; place-items: center; overflow: visible; }
+.gameplay-room-node > img:first-child, .gameplay-treasure { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 3px #081722); }
+.gameplay-room-node.current > img:first-child { filter: drop-shadow(0 0 7px #ff6b5f); }
+.gameplay-player-marker { position: absolute !important; z-index: 2; bottom: -35%; left: 50%; width: 56% !important; height: 53% !important; object-fit: contain; transform: translateX(-50%); filter: drop-shadow(0 0 5px #ff725f); }
+.gameplay-treasure { position: relative; z-index: 1; width: 12%; height: 100%; }
+.gameplay-hud .hud-camera { top: 52%; left: 31.5%; z-index: 4; font-size: clamp(4px, .63cqw, 10px); }
+.gameplay-hud .hud-camera-error { top: 73%; left: 31.5%; max-width: 17%; }
+.game-over-panel { position: absolute; z-index: 30000; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .45em; background: #07141de8; color: #ffe0ad; font-family: 'Press Start 2P', 'Noto Sans SC', monospace; text-align: center; }
+.game-over-panel span { color: #ff6c62; font-size: clamp(20px, 4cqw, 58px); text-shadow: 3px 3px #572e34; }
+.game-over-panel strong { font: 900 clamp(18px, 2.5cqw, 40px) 'Noto Sans SC', sans-serif; }
+.game-over-panel button { margin-top: 1em; border: 2px solid #f1cd91; padding: .75em 1.1em; background: #173440; color: #ffe0ad; font: 800 clamp(11px, 1.25cqw, 18px) 'Noto Sans SC', sans-serif; cursor: pointer; }
+.game-over-panel button:hover { background: #28515c; }
 .loading-panel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: #0b202af5; text-align: center; }
 .panel-index { color: #d7b981; font: 14px monospace; letter-spacing: .2em; }
 .loading-panel p { max-width: 450px; font-size: 14px; line-height: 1.7; }
