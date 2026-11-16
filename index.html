@@ -1,14 +1,122 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b202a" />
-    <meta name="description" content="Museum Heist: room movement and pose-shadow scan." />
-    <title>Museum Heist · Room 01</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101a24" />
+  <title>LFG — Treasure Chest Gesture Unlock Lab</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="identity"><span class="emblem">◆</span><div><span class="brand-eyebrow">SD5913 · MUSEUM HEIST / LFG</span><strong>THE FINAL VAULT</strong></div></div>
+    <div class="top-actions"><span class="status-pill" id="input-tag">● SIMULATION MODE</span><button class="btn ghost" id="reset-btn">↻ Reset</button></div>
+  </header>
+  <main>
+    <section class="intro">
+      <div><span class="eyebrow">PROTOTYPE 01 · HAND GESTURE EXPERIMENT</span><h1>One last lock.<br><span>Four gestures to freedom.</span></h1><p>你已躲过监控，潜入博物馆最深处。现在，让自己的手成为钥匙，打开最后的宝箱。</p></div>
+      <div class="intro-number"><strong>04</strong><span>GESTURE CHALLENGES</span></div>
+    </section>
+    <div class="workspace">
+      <section class="vault-panel" aria-label="博物馆宝箱游戏区域">
+        <div class="panel-top"><span><i class="live-dot"></i> FINAL ROOM · VAULT 07</span><span id="vault-status">LOCKED</span></div>
+        <div class="museum-scene" id="museum-scene">
+          <svg class="museum-art" viewBox="0 0 760 490" role="img" aria-label="博物馆陈列室中央的可解锁黄金宝箱">
+            <defs>
+              <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192a34"/><stop offset="1" stop-color="#111923"/></linearGradient>
+              <linearGradient id="chestFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#77502d"/><stop offset=".5" stop-color="#432e25"/><stop offset="1" stop-color="#2c2022"/></linearGradient>
+              <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe4a4"/><stop offset=".55" stop-color="#e0a64e"/><stop offset="1" stop-color="#8d5d2e"/></linearGradient>
+              <linearGradient id="woodLid" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#956637"/><stop offset="1" stop-color="#402a25"/></linearGradient>
+              <radialGradient id="aura"><stop stop-color="#f6c76c" stop-opacity=".22"/><stop offset="1" stop-color="#f6c76c" stop-opacity="0"/></radialGradient>
+              <pattern id="wallPattern" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M0 56 V0 H56" fill="none" stroke="#e2c895" stroke-opacity=".045"/></pattern>
+              <filter id="glow"><feGaussianBlur stdDeviation="8" /></filter>
+            </defs>
+            <rect width="760" height="490" fill="url(#wall)"/>
+            <rect width="760" height="490" fill="url(#wallPattern)"/>
+            <path d="M0 330H760" stroke="#c2a775" stroke-opacity=".25" stroke-width="3"/>
+            <path d="M0 338H760V490H0Z" fill="#131a21"/>
+            <path d="M-20 490L187 338M159 490L288 338M380 490V338M600 490L470 338M780 490L572 338" stroke="#baa06d" stroke-opacity=".095" stroke-width="2"/>
+            <path d="M0 398H760M0 455H760" stroke="#baa06d" stroke-opacity=".09" stroke-width="2"/>
+            <g opacity=".65">
+              <path d="M68 334V97Q68 52 117 52Q166 52 166 97V334" fill="#101820" stroke="#5c594c" stroke-width="8"/>
+              <path d="M594 334V97Q594 52 643 52Q692 52 692 97V334" fill="#101820" stroke="#5c594c" stroke-width="8"/>
+              <rect x="85" y="128" width="64" height="118" fill="#1d2931" stroke="#9e8557" stroke-opacity=".35"/>
+              <rect x="611" y="128" width="64" height="118" fill="#1d2931" stroke="#9e8557" stroke-opacity=".35"/>
+              <path d="M100 222h34l-6-72h-22zM627 222h34l-6-72h-22z" fill="#6e7065" opacity=".55"/>
+              <rect x="80" y="244" width="75" height="20" fill="#59616a"/><rect x="605" y="244" width="75" height="20" fill="#59616a"/>
+            </g>
+            <circle cx="380" cy="258" r="220" fill="url(#aura)"/>
+            <path d="M296 90H464" stroke="#d9b679" stroke-width="2" opacity=".3"/>
+            <circle cx="380" cy="90" r="7" fill="#ecc87a" opacity=".45"/>
+            <g class="vault-treasure-glow"><ellipse cx="380" cy="268" rx="160" ry="90" fill="#ffcc75" opacity=".32" filter="url(#glow)"/></g>
+            <g class="chest-container">
+              <ellipse cx="383" cy="372" rx="174" ry="24" fill="#000" opacity=".35"/>
+              <g class="chest-lid">
+                <path d="M244 232V219Q244 158 380 154Q516 158 516 219V232L500 247H260Z" fill="url(#woodLid)" stroke="#d4a45d" stroke-width="7"/>
+                <path d="M245 222Q385 184 516 222" fill="none" stroke="url(#gold)" stroke-width="15"/>
+                <path d="M290 178L299 236M461 177L452 236" stroke="#bf8b47" stroke-width="16" opacity=".9"/>
+                <path d="M245 232H516" stroke="#edd191" stroke-width="7"/>
+                <circle cx="380" cy="209" r="7" fill="#f7dfad"/>
+              </g>
+              <path d="M252 238H507L500 357Q379 383 260 357Z" fill="url(#chestFront)" stroke="#a57a43" stroke-width="5"/>
+              <path d="M267 251H494L486 345Q378 371 275 345Z" fill="none" stroke="#e3b86a" stroke-opacity=".30" stroke-width="3"/>
+              <path d="M282 242L293 359M477 242L465 359" stroke="url(#gold)" stroke-width="17"/>
+              <path d="M254 261L505 261" stroke="#d8a653" stroke-width="10"/>
+              <g class="lock-assembly">
+                <rect x="354" y="252" width="52" height="72" rx="9" fill="url(#gold)" stroke="#503620" stroke-width="5"/>
+                <circle cx="380" cy="286" r="16" fill="#2b2730" stroke="#f8d99c" stroke-width="4"/>
+                <g class="turning-lock" id="turning-lock">
+                  <rect x="376" y="274" width="8" height="24" rx="3" fill="#f4d99f"/>
+                  <rect x="372" y="274" width="16" height="6" rx="2" fill="#f4d99f"/>
+                </g>
+              </g>
+              <g class="key-sparkle" id="key-sparkle"><path d="M380 237L385 249L397 254L385 259L380 271L375 259L363 254L375 249Z" fill="#ffe5a3"/></g>
+            </g>
+            <g class="treasure-stars"><circle cx="325" cy="198" r="4" fill="#ffe2a4"/><circle cx="455" cy="203" r="3" fill="#ffe2a4"/><path d="M405 143v18m-9-9h18" stroke="#ffe6ae" stroke-width="3"/></g>
+            <g class="floor-tag"><rect x="268" y="414" width="224" height="30" rx="15" fill="#16232a" stroke="#827252" stroke-opacity=".6"/><text x="380" y="434" fill="#d1b784" text-anchor="middle" font-size="12" letter-spacing="2">EXHIBIT NO. 007</text></g>
+          </svg>
+          <div class="floating-objective" id="objective-chip"><span>◈</span><div><small>OBJECTIVE</small><strong>Unlock the ancient relic chest</strong></div></div>
+          <div class="success-overlay" id="success-overlay" aria-live="polite"><span>✦ ARTIFACT RECOVERED ✦</span><strong>CHEST UNLOCKED</strong><small>You made it out with the treasure.</small></div>
+          <div class="scene-progress"><span id="stage-readout">STAGE 01 / 04</span><div class="track"><div class="track-fill" id="track-fill"></div></div><span id="progress-text">0%</span></div>
+        </div>
+        <div class="instruction-bar"><div class="instruction-icon" id="instruction-icon">☝</div><div><small>CURRENT ACTION</small><strong id="instruction-title">Point · 寻找锁孔</strong><span id="instruction-copy">伸出食指，其余手指握起</span></div><div class="angle-indicator"><small id="angle-label">HOLD</small><strong id="angle-value">0%</strong></div></div>
+      </section>
+      <aside class="tracking-panel">
+        <div class="panel-top"><span><i class="live-dot amber"></i> HAND TRACKING LAB</span><span id="camera-status">OFFLINE</span></div>
+        <div class="camera-frame" id="camera-frame">
+          <video id="webcam" autoplay muted playsinline></video><canvas id="hand-overlay" width="640" height="480"></canvas>
+          <div class="camera-empty" id="camera-empty"><div class="camera-empty-icon">✋</div><strong>Waiting for your hand</strong><span>启动摄像头，或用模拟模式检查游戏逻辑</span></div>
+          <div class="camera-corner tl"></div><div class="camera-corner tr"></div><div class="camera-corner bl"></div><div class="camera-corner br"></div>
+          <span class="camera-label" id="camera-label">NO CAMERA STREAM</span>
+        </div>
+        <div class="tracking-current"><div><small>DETECTED GESTURE / 实时识别</small><strong id="gesture-name">NO HAND</strong></div><span class="match-pill" id="match-state">Waiting</span></div>
+        <div class="gesture-grid" id="gesture-grid">
+          <div data-gesture-card="POINT"><span>☝</span><strong>POINT</strong><small>单指</small></div>
+          <div data-gesture-card="PINCH"><span>🤏</span><strong>PINCH</strong><small>捏合</small></div>
+          <div data-gesture-card="FIST"><span>✊</span><strong>FIST</strong><small>握拳</small></div>
+          <div data-gesture-card="ROTATE"><span>↻</span><strong>ROTATE</strong><small>倾斜</small></div>
+        </div>
+        <div class="camera-buttons"><button class="btn primary" id="start-camera">◉ Start Real Camera</button><button class="btn secondary" id="sim-mode">⌨ Simulation</button><button class="btn secondary hidden" id="stop-camera">Stop Camera</button></div>
+        <div class="camera-message" id="camera-message" role="status">当前为模拟模式（不会使用摄像头）。点击 Start Real Camera 进行真实手势识别。</div>
+        <div class="sensitivity"><label for="sensitivity">Pinch threshold · 捏合灵敏度 <output id="threshold-value">0.36</output></label><input id="sensitivity" type="range" min="0.24" max="0.5" step="0.01" value="0.36"/><p>值越大越容易判定捏合；如果频繁误判，请调低。</p></div>
+      </aside>
+    </div>
+    <section class="steps-section"><div class="section-heading"><div><span class="eyebrow">UNLOCK SEQUENCE</span><h2>Four gestures, one treasure.</h2></div><span class="step-hint">Steps complete in order · 连续保持才能过关</span></div>
+      <div class="steps-grid" id="steps-grid">
+        <div class="step-card active" data-step="0"><div class="step-number">01 <span>☝</span></div><strong>POINT</strong><p>伸出一根食指</p><div class="step-meter"><div></div></div></div>
+        <div class="step-card" data-step="1"><div class="step-number">02 <span>🤏</span></div><strong>PINCH</strong><p>拇指食指捏合</p><div class="step-meter"><div></div></div></div>
+        <div class="step-card" data-step="2"><div class="step-number">03 <span>✊</span></div><strong>GRAB</strong><p>五指握拳</p><div class="step-meter"><div></div></div></div>
+        <div class="step-card" data-step="3"><div class="step-number">04 <span>↻</span></div><strong>ROTATE</strong><p>握拳向左 / 右倾斜</p><div class="step-meter"><div></div></div></div>
+      </div>
+    </section>
+    <section class="test-section"><div class="test-head"><div><span class="eyebrow">FOR TUTOR & TEAM TESTING</span><h2>Simulation controls <span>· 模拟输入</span></h2><p>下面的按键仅用于验证流程，不代表摄像头识别成功。真实测试请先点击 Start Real Camera。</p></div><span class="sim-warning" id="sim-warning">SIMULATION ONLY</span></div>
+      <div class="control-row"><button class="test-key" data-key="1"><kbd>1</kbd><span>Hold POINT</span></button><button class="test-key" data-key="2"><kbd>2</kbd><span>Hold PINCH</span></button><button class="test-key" data-key="3"><kbd>3</kbd><span>Hold FIST</span></button><button class="test-key" data-key="LEFT"><kbd>←</kbd><span>Rotate left + FIST</span></button><button class="test-key" data-key="RIGHT"><kbd>→</kbd><span>Rotate right + FIST</span></button><button class="btn outline" id="auto-demo">▶ Auto demo (simulated)</button></div>
+      <div class="metrics"><span>Model: <b>MediaPipe Hand Landmarker</b></span><span>Hand detected: <b id="metric-presence">NO</b></span><span>Pinch distance: <b id="metric-pinch">—</b></span><span>Rotation: <b id="metric-angle">—</b></span><span>Input: <b id="metric-mode">SIMULATION</b></span></div>
+    </section>
+  </main>
+  <footer class="footer"><span>MUSEUM HEIST · LFG / SD5913</span><span>Camera frames are processed locally. Model files are downloaded when camera starts. No video upload or recording.</span></footer>
+</div>
+<script type="module" src="./src/app.js"></script>
+</body>
 </html>
