@@ -4,9 +4,10 @@ import Phaser from 'phaser';
 import Room1 from './game/Room1.js';
 import { GAME } from './game/config.js';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
+import { HandUnlockDemo } from './hand-unlock/HandUnlockDemo.jsx';
 import './styles.css';
 
-function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, onToggleCamera }) {
+function RoomExperience({ onPoseDemo, onUnlockDemo, resumeState, cameraStatus, cameraError, onToggleCamera }) {
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
@@ -56,6 +57,10 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
         <button className={`hud-camera ${cameraStatus}`} type="button" onClick={onToggleCamera} disabled={cameraStatus === 'requesting'}>
           {cameraStatus === 'ready' ? '关闭扫描摄像头' : cameraStatus === 'requesting' ? '正在开启…' : cameraStatus === 'error' ? '重试扫描摄像头' : '开启扫描摄像头'}
         </button>
+        <button className="hud-unlock" type="button" onClick={() => {
+          const scene = gameRef.current?.scene.getScene('Room1');
+          onUnlockDemo(scene?.getResumeState() ?? null);
+        }}>测试宝箱开锁</button>
         {cameraError && <span className="hud-camera-error">{cameraError}</span>}
       </div>
       {state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? '安全遮蔽中 · 按空格键开始姿势扫描' : '安全遮蔽中 · 请先点击上方“开启扫描摄像头”'}</p>}
@@ -70,6 +75,7 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
 
 function App() {
   const [activeExhibitId, setActiveExhibitId] = useState(null);
+  const [unlockOpen, setUnlockOpen] = useState(() => new URLSearchParams(window.location.search).has('unlock'));
   const [resumeState, setResumeState] = useState(null);
   const cameraStreamRef = useRef(null);
   const [cameraStatus, setCameraStatus] = useState('idle');
@@ -119,6 +125,11 @@ function App() {
     }}
   />;
 
+  if (unlockOpen) return <HandUnlockDemo
+    cameraStream={cameraStreamRef.current}
+    onClose={() => setUnlockOpen(false)}
+  />;
+
   return <RoomExperience
     resumeState={resumeState}
     cameraStatus={cameraStatus}
@@ -127,6 +138,10 @@ function App() {
     onPoseDemo={(exhibitId, playerState) => {
       setResumeState(playerState);
       setActiveExhibitId(exhibitId);
+    }}
+    onUnlockDemo={playerState => {
+      setResumeState(playerState);
+      setUnlockOpen(true);
     }}
   />;
 }

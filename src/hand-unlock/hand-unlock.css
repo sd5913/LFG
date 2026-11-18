@@ -1,0 +1,26 @@
+.hand-unlock-shell { display: grid; min-height: 100vh; place-items: center; background: #071722; font-family: 'Noto Sans SC', system-ui, sans-serif; }
+.hand-unlock-stage { position: relative; width: min(100vw, calc(100dvh * 1672 / 941)); aspect-ratio: 1672 / 941; overflow: hidden; background-color: #193445; background-size: 100% 100%; container-type: inline-size; }
+.hand-unlock-distance { position: absolute; top: 0; right: 0; display: flex; align-items: center; width: 16%; height: 9.2%; padding-left: .5cqw; background: #0d2938; color: #e5cba2; font-size: 1.55cqw; font-weight: 900; }
+.hand-unlock-dim { position: absolute; inset: 0; background: #061723a6; }
+.hand-unlock-modal { position: absolute; inset: 15.4% 11.8% 12.4%; border: .42cqw solid #e5cba2; box-shadow: 0 0 0 .65cqw #071b26, 0 1.2cqw 3cqw #0009; background: #0c2a39; color: #f1ddb8; }
+.hand-unlock-header { display: flex; align-items: center; gap: 2.8cqw; height: 14%; padding: 0 2.5%; border-bottom: .25cqw solid #6a858b; background: #173a49; }
+.hand-unlock-header h1 { margin: 0; font-size: 2.35cqw; white-space: nowrap; }.hand-unlock-header span { color: #a8c1c0; font-size: 1.32cqw; white-space: nowrap; }
+.hand-unlock-header button { margin-left: auto; border: .15cqw solid #9fb3ad; padding: .45cqw .7cqw; background: #102b3a; color: #f1ddb8; font-size: 1.04cqw; cursor: pointer; }
+.hand-unlock-grid { display: grid; grid-template-columns: 32% 1fr; gap: 1.5%; height: 86%; padding: 1.3%; }
+.hand-unlock-reference, .hand-unlock-camera { border: .23cqw solid #d7bd96; background: #123342; }
+.hand-unlock-reference { padding: 1.4cqw 1cqw; }.hand-unlock-reference h2, .hand-unlock-section-title h2 { margin: 0; font-size: 1.55cqw; }.hand-unlock-reference h2 { display: flex; justify-content: space-between; margin-bottom: .8cqw; }.hand-unlock-reference small { color: #a8c1c0; font-size: 1.16cqw; }
+.hand-unlock-card { display: grid; grid-template-columns: 39% 1fr; align-items: center; gap: 1%; height: 28%; margin-bottom: 2.4%; border: .17cqw solid #738f90; padding: .35cqw; background: #102d3b; }
+.hand-unlock-card.active { border-color: #e5cba2; background: #1a4050; }.hand-unlock-card.done { border-color: #77ddba; }.hand-unlock-card.pending { opacity: .65; }
+.hand-unlock-card img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }.hand-unlock-card strong, .hand-unlock-card span { display: block; }.hand-unlock-card strong { font-size: 1.29cqw; white-space: nowrap; }.hand-unlock-card span { margin-top: .65cqw; color: #b4d0c7; font-size: 1.02cqw; }
+.hand-unlock-main { display: grid; grid-template-rows: 52% 1fr; gap: 1.3%; min-height: 0; }.hand-unlock-camera { position: relative; padding: 1.15cqw 1.25cqw; }
+.hand-unlock-section-title { display: flex; justify-content: space-between; align-items: center; }.hand-unlock-section-title span { color: #77ddba; font-size: 1.06cqw; font-weight: 700; }
+.hand-unlock-video-frame { position: relative; height: 68%; margin-top: .4cqw; border: .22cqw solid #63838b; overflow: hidden; background: #193c4a; }
+.hand-unlock-video-frame video, .hand-unlock-video-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }.hand-unlock-video-frame canvas { image-rendering: pixelated; }
+.hand-unlock-camera-placeholder { position: absolute; inset: 0; display: grid; place-items: center; background: #102d3bcc; color: #a8c1c0; font-size: 1.24cqw; }
+.hand-unlock-camera p { overflow: hidden; margin: .4cqw 0 0; color: #afcfbf; font-size: 1cqw; white-space: nowrap; text-overflow: ellipsis; }.hand-unlock-actions { position: absolute; right: 1.2cqw; bottom: .5cqw; }
+.hand-unlock-actions button { border: .15cqw solid #d7bd96; padding: .25cqw .6cqw; background: #1a4050; color: #f1ddb8; font-size: .93cqw; cursor: pointer; }.hand-unlock-actions button:disabled { opacity: .6; }
+.hand-unlock-lock { position: relative; min-height: 0; padding: .6cqw 1.2cqw; }.hand-unlock-lock-art { position: absolute; inset: 12% 8% 0; opacity: .82; }.hand-unlock-shackle { position: absolute; top: 0; left: 28%; width: 44%; height: 47%; border: 1.1cqw solid #64838c; border-bottom: 0; clip-path: polygon(0 100%,0 30%,10% 30%,10% 10%,90% 10%,90% 30%,100% 30%,100% 100%); }
+.hand-unlock-lock-body { position: absolute; inset: 28% 0 0; display: flex; align-items: center; justify-content: center; gap: 3.5%; border: .45cqw solid #718c91; background: #254653; }
+.hand-unlock-slot { position: relative; display: grid; place-items: center; width: 21%; height: 60%; border: .3cqw solid #6f8b8e; background: #163747; color: #8ba4a7; font-size: 2cqw; font-weight: 900; overflow: hidden; }.hand-unlock-slot.active { border-color: #e5cba2; color: #f1ddb8; }.hand-unlock-slot.done { color: #77ddba; }.hand-unlock-slot span { position: absolute; bottom: 0; left: 0; height: .35cqw; background: #77ddba; }
+.hand-unlock-lock-art.opened .hand-unlock-shackle { transform: translateY(-13%) rotate(-7deg); transform-origin: left bottom; }
+@media (max-width: 700px) { .hand-unlock-shell { min-height: 100dvh; }.hand-unlock-stage { width: 100vw; }.hand-unlock-modal { inset: 10% 4% 8%; }.hand-unlock-header h1 { font-size: 2.7cqw; }.hand-unlock-grid { grid-template-columns: 35% 1fr; }.hand-unlock-card strong { font-size: 1.5cqw; } }

@@ -1,6 +1,6 @@
 # Museum Heist
 
-**Current implementation: Room 1 movement MVP, 9 November 2026.** Use WASD to move one character through a museum room, change between four static facing images, and collide with walls and furniture. This is the first runnable slice of a planned three-room stealth and upper-body pose game.
+**Current implementation:** Room 1 movement and exhibit pose scanning, plus a three-step camera hand-unlock demo integrated into the game's UI.
 
 ![Room 1 movement prototype](screenshots/room1-desktop.png)
 
@@ -17,7 +17,7 @@
 - F2 or the visible button toggles collision outlines; R or the reset button returns the character to its starting point.
 - Leaving the game canvas, switching away or losing focus clears held movement. Missing image assets produce a loading-error message with a reload button.
 
-There are no guard patrols, alert calculations, camera requests, pose recognition, walking frames, room transitions or treasure-unlock logic in this MVP. The three-node HUD is a static route reference, not implemented progression.
+Guard patrols, alert calculations, walking frames and room transitions are still outside this MVP. The three-node HUD is a static route reference, not implemented progression.
 
 ## Run on Windows
 
@@ -52,6 +52,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Build
 ### Pose Shadow Lab handoff
 
 When the character is fully behind a display case and its blue frame is visible, press **Space** to open that case's pose-shadow challenge; press **Space** again to leave it. Start the camera to grant browser-local pose detection, then hold the single target pose represented by that display case. On completion the app returns to the room automatically. The MediaPipe model and runtime are loaded from public hosting on first use; camera frames and landmarks are not recorded or uploaded by this app.
+
+### Three-step treasure hand unlock
+
+Click **测试宝箱开锁** in the Room 1 HUD, or visit `http://127.0.0.1:5173/?unlock=1` to open the same modal directly. Click **启动识别** and grant camera access. Follow the left-side pixel references in order: hands together near the chest, hands apart near shoulder height, then wrists crossed in front of the chest. Hold each matching position for about 1.2 seconds. The lock slots advance only from live camera detection; there is no simulated unlock button in this integrated UI. **返回展厅** closes the modal.
+
+The integration keeps the teammate's original single-hand prototype in `treasure-hand-lock-demo1/` and reuses its 21-point hand analyzer and skeleton edges. The UI combines MediaPipe Hand Landmarker (up to two hands) with Pose Landmarker shoulder/elbow/wrist points to match the three artwork poses. Palm contact, palm orientation and exact finger shapes are visual cues rather than guaranteed classification rules. Crossed wrists may occlude landmarks, so thresholds and camera ergonomics need a real-person playtest. The demo's first run downloads MediaPipe WASM and models; video frames are processed in the browser and are not uploaded by this code. See `src/hand-unlock/recognize.js` for the current geometry thresholds.
 
 Dependencies are pinned in `package.json` and `pnpm-lock.yaml`: React/React DOM 19.3.1, Vite 8.3.7 and Phaser 3.90.0. This deliberately uses the documented Phaser 3 API. The project does not require the experimental UI-kit ZIP or the full composite concept image at runtime.
 
