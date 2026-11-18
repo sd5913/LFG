@@ -54,7 +54,7 @@ export function HandUnlockDemo({ cameraStream, onClose }) {
     streamRef.current = null; ownsStreamRef.current = false;
     if (videoRef.current) { videoRef.current.pause(); videoRef.current.srcObject = null; }
     modelsRef.current?.hand?.close(); modelsRef.current?.pose?.close(); modelsRef.current = null;
-    if (canvasRef.current) canvasRef.current.getContext('2d').clearRect(0, 0, 640, 360);
+    if (canvasRef.current) canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     setStatus('idle');
   }, []);
   useEffect(() => () => {
@@ -75,6 +75,8 @@ export function HandUnlockDemo({ cameraStream, onClose }) {
       streamRef.current = stream; ownsStreamRef.current = stream !== cameraStream;
       const video = videoRef.current;
       video.srcObject = stream; await video.play();
+      canvasRef.current.width = video.videoWidth;
+      canvasRef.current.height = video.videoHeight;
       const vision = await FilesetResolver.forVisionTasks(WASM);
       const hand = await makeLandmarker(HandLandmarker, vision, HAND_MODEL, { numHands: 2, minHandDetectionConfidence: .5 });
       const pose = await makeLandmarker(PoseLandmarker, vision, POSE_MODEL, { numPoses: 1, minPoseDetectionConfidence: .5 });
@@ -150,7 +152,7 @@ export function HandUnlockDemo({ cameraStream, onClose }) {
               <div className="hand-unlock-section-title"><h2>你的手势</h2><span>{status === 'running' ? '● 摄像头实时识别' : status === 'unlocked' ? '● 识别完成' : '摄像头未启动'}</span></div>
               <div className="hand-unlock-video-frame">
                 <video ref={videoRef} playsInline muted autoPlay />
-                <canvas ref={canvasRef} width="640" height="360" aria-hidden="true" />
+                <canvas ref={canvasRef} width="640" height="480" aria-hidden="true" />
                 {status !== 'running' && status !== 'unlocked' && <div className="hand-unlock-camera-placeholder">将上半身和双手放入取景框</div>}
               </div>
               <p role="status">{message}</p>
