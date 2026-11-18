@@ -1,0 +1,13 @@
+{
+  "name": "lfg-anime-seal-unlock-v2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "LFG four-stage anime-inspired webcam hand seal unlocking prototype",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {"node": ">=20"}
+}

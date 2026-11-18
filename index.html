@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#090f1c" />
+  <title>LFG · ANIME SEAL UNLOCK V2</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-glyph">✦</span><div><strong>LFG / MUSEUM HEIST</strong><small>RELIC SECURITY · INTERACTION LAB</small></div></div>
+      <div class="header-right"><span class="edition">ANIME SEAL UNLOCK</span><span class="version">V2.0</span></div>
+    </header>
+    <div class="headline">
+      <div><p class="eyebrow">CLASSIFIED SYSTEM / SEAL NO. 002</p><h1>禁術 · 四重结印<span>解封</span></h1><p class="intro">狐狸契约、无量启封、影分身十字印、雷霆结界。用摄像头做出四套不同的动漫式结印，夺取展厅中央的禁忌遗物。</p></div>
+      <div class="top-status"><span id="mode-badge">○ OFFLINE / SIMULATION</span><small id="notice-small">识别原型 · 不使用云端视频上传</small></div>
+    </div>
+    <main class="layout">
+      <section class="left-col">
+        <div class="panel relic-panel" id="relic-panel">
+          <div class="panel-top"><span>EXHIBIT 09 / FORBIDDEN RELIC</span><span id="vault-state">◈ SEAL ACTIVE</span></div>
+          <div class="relic-art">
+            <div class="scene-arches"><i></i><i></i><i></i></div>
+            <div class="moon"></div>
+            <div class="sigil-shell"><div class="sigil-outer"></div><div class="sigil-middle"></div><div class="sigil-inner"></div><div class="sigil-cross"></div><span class="sigil-center">封</span><div class="sigil-pips"><b data-pip="0">狐</b><b data-pip="1">空</b><b data-pip="2">影</b><b data-pip="3">雷</b></div></div>
+            <div class="chest"><div class="chest-lid"></div><div class="chest-base"><i class="lock"></i></div></div>
+            <div class="ground"></div>
+            <div id="success-banner" class="success-banner" aria-live="polite">封印解除 · 宝物已获得<span>RELIC UNLOCKED</span></div>
+          </div>
+          <div class="scene-footer"><span>SEALED CHAMBER · ARTIFACT 04</span><span id="scene-count">0 / 4 SEALS BROKEN</span></div>
+        </div>
+        <div class="panel stages-panel">
+          <div class="panel-heading"><h2>结印序列</h2><span>ONE SEAL AT A TIME</span></div>
+          <div class="step-row active" data-step="0"><div class="step-number">01</div><div class="step-copy"><strong>狐之契约 <em>KON</em></strong><small>食指＋小指如狐耳，拇指靠近中间两指</small><div class="mini-track"><i></i></div></div><span class="step-mark">◌</span></div>
+          <div class="step-row" data-step="1"><div class="step-number">02</div><div class="step-copy"><strong>无量启封 <em>VOID</em></strong><small>食指竖起，中指勾近食指上半段</small><div class="mini-track"><i></i></div></div><span class="step-mark">◌</span></div>
+          <div class="step-row" data-step="2"><div class="step-number">03</div><div class="step-copy"><strong>影分身术 <em>CROSS</em></strong><small>两组食指＋中指交叉成十字</small><div class="mini-track"><i></i></div></div><span class="step-mark">◌</span></div>
+          <div class="step-row" data-step="3"><div class="step-number">04</div><div class="step-copy"><strong>雷霆结界 <em>THUNDER</em></strong><small>双前臂 X 形交叉，食指与小指伸出</small><div class="mini-track"><i></i></div></div><span class="step-mark">◌</span></div>
+        </div>
+      </section>
+      <section class="right-col">
+        <div class="panel camera-panel">
+          <div class="panel-top"><span>LIVE SENSOR / HAND + POSE</span><span id="camera-tag">NO CAMERA</span></div>
+          <div class="video-wrap" id="video-wrap">
+            <video id="webcam" playsinline muted autoplay></video>
+            <canvas id="overlay" width="640" height="480"></canvas>
+            <div class="camera-placeholder" id="camera-placeholder"><div class="viewfinder"><i></i><i></i><i></i><i></i><span>✳</span></div><strong>CAMERA STANDBY</strong><small>开启真实摄像头，检测 21 点手部关键点和上半身姿态</small></div>
+            <div class="video-corner tl"></div><div class="video-corner tr"></div><div class="video-corner bl"></div><div class="video-corner br"></div>
+            <div class="video-label" id="video-label">● SIMULATOR / NO INPUT</div>
+            <div class="video-hint" id="video-hint">本地识别 · 摄像头画面仅显示于本设备</div>
+          </div>
+          <div class="controls">
+            <button id="start-camera" class="btn primary"><span>◉</span> 开启真实摄像头</button>
+            <button id="stop-camera" class="btn secondary" disabled>停止摄像头</button>
+            <button id="simulation" class="btn ghost">模拟模式</button>
+            <button id="reset" class="btn ghost">↺ 重置</button>
+          </div>
+          <div class="message" id="message" role="status">Ready. 点击「开启真实摄像头」开始真人结印测试。</div>
+        </div>
+        <div class="panel instruction-panel">
+          <div class="panel-heading"><h2 id="current-title">01 · 狐之契约 / KON</h2><span id="stage-number">STEP 1 / 4</span></div>
+          <p class="stage-quote" id="stage-quote">「双耳开，狐吻合。」</p>
+          <p class="instruction" id="instruction">单手：食指和小指竖起像狐狸耳朵，中指、无名指靠近拇指形成狐狸嘴。</p>
+          <div class="hold-head"><span id="match-label">WAITING FOR SEAL</span><strong id="hold-percent">0%</strong></div>
+          <div class="hold-track"><div id="hold-bar"></div></div>
+          <div class="scoreline"><span>HAND SIGNAL <b id="hand-count">0</b></span><span>POSE <b id="pose-state">—</b></span><span>RULE SCORE <b id="rule-score">0%</b></span></div>
+          <div class="rule-box"><div class="rule-title"><span>LIVE DEBUG · WHY NOT MATCHING?</span><span id="rule-outcome">NOT YET</span></div><div id="checks" class="checks">请启动摄像头或进入模拟模式。</div><p class="help-line" id="help-line">如果识别不稳定，请将手完整放进画面。</p></div>
+        </div>
+        <div class="panel dev-panel"><div><strong>DEMO / SIMULATED SIGNALS</strong><small>仅测试关卡状态机，不代表摄像头真的识别成功</small></div><button class="btn outlined" id="sim-hold">按住模拟当前结印</button><button class="btn ghost" id="auto-demo">自动展示四重结印</button></div>
+      </section>
+    </main>
+    <footer><span>FAN-INSPIRED INTERACTION PROTOTYPE · ORIGINAL UI / NO ANIME ASSETS</span><span>HAND LANDMARKER + POSE LANDMARKER · LOCAL BROWSER INFERENCE</span></footer>
+  </div>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
