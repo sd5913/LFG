@@ -1,102 +1,107 @@
 # Museum Heist
 
-**Current implementation: Room 1 movement MVP, 9 November 2026.** Use WASD to move one character through a museum room, change between four static facing images, and collide with walls and furniture. This is the first runnable slice of a planned three-room stealth and upper-body pose game.
+一个像素风潜入与手势交互游戏。玩家需要从博物馆通风系统潜入，在展厅内避开警卫、伪装成展品，并通过姿势识别完成宝藏的解锁与盗取；最后携带宝藏逃离现场。
 
-![Room 1 movement prototype](screenshots/room1-desktop.png)
+> 当前仓库的可运行内容聚焦于第二环节「展厅潜入与姿势解锁」。第一、第三环节及其界面为已确定的后续开发计划。
 
-## What works now
+## 游戏结构
 
-- WASD and arrow-key movement; releasing the keys stops movement and preserves facing.
-- A single configured speed of **220 logical pixels/second**, normalised on diagonals. The latest active direction controls facing.
-- Four transparent character PNGs, aligned to one feet anchor despite different source dimensions.
-- Phaser Arcade collisions using a 34 by 20 logical-pixel feet body, room boundaries, four display-case bases, plant pots and two benches.
-- Transparent foreground for all eight plants: foliage hides a player standing behind it, while pots block movement. The central plant additionally blocks its entire foliage-and-pot rectangle. Plant colours remain sampled from the original background.
-- Both lower lamp fixtures occlude the player without adding collision; upper lamps are unchanged. Both benches have foreground artwork and lower-base collision only.
-- A separate team-supplied blue image sits underneath an exhibit only when its opaque artwork completely hides the character. It disappears when the character becomes visible again. The previous elliptical ring is removed; highlight and exhibit images remain independently replaceable.
-- A 1600 by 900 logical scene, proportional FIT scaling and nearest-neighbour image sampling.
-- F2 or the visible button toggles collision outlines; R or the reset button returns the character to its starting point.
-- Leaving the game canvas, switching away or losing focus clears held movement. Missing image assets produce a loading-error message with a reload button.
+| 环节 | 名称 | 核心玩法 | 开发状态 |
+| --- | --- | --- | --- |
+| 01 | 通风管道潜入 | 横屏跑跳；使用手势操控分流阀，选择正确的管道路线进入博物馆。 | 计划中 |
+| 02 | 展厅伪装与宝藏解锁 | 在展柜后躲避警卫视线，模仿对应雕像的姿势；完成姿势识别后解锁并盗取宝藏。 | 可运行原型 |
+| 03 | 携宝逃脱 | 带着宝藏穿越后续区域，在追捕与警戒压力下离开博物馆。 | 未开始 |
 
-There are no guard patrols, alert calculations, camera requests, pose recognition, walking frames, room transitions or treasure-unlock logic in this MVP. The three-node HUD is a static route reference, not implemented progression.
+## 01 · 通风管道潜入（计划中）
 
-## Run on Windows
+玩家从通风管道进入博物馆。这个阶段将采用横屏跑跳的节奏：移动、跳跃、穿梭不同高度的管道，并在关键节点通过摄像头手势控制分流阀，让角色进入正确路线。
 
-Open PowerShell in **this `LFG` repository**, then run:
+界面视觉以本次提供的「图一」为准：深蓝色工业管道场景、可见气流箭头、机械阀门、灯光与分层管线共同构成潜入路线。底部入口、分流装置与右侧出口将作为关卡推进的空间线索。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1
-```
+### 预期交互
 
-Open **http://127.0.0.1:5173/**. Click the game if the keys do not respond. Keep the terminal open; `Ctrl+C` stops the server. The first run installs the locked dependencies and needs internet. The script uses an installed Node.js, or the existing E-drive Codex runtime when available on the development computer. On another computer, install Node.js 24 LTS first. No camera or paid service is needed.
+- 横屏移动、跑跳与管道间切换。
+- 手势识别控制分流阀的方向／开关状态。
+- 气流箭头与阀门状态提供即时路线反馈。
+- 误入错误管道或未及时调整阀门时触发回退或危险状态。
 
-If 5173 is occupied, stop an earlier copy of this game's server before retrying. Do not double-click `index.html`: Vite serves the modules and assets over HTTP.
+## 02 · 展厅伪装与宝藏解锁（当前原型）
 
-## Standard developer commands
+玩家进入博物馆展厅后，需要在警卫巡逻与警戒值上升的压力下靠近展柜。人物完全躲到展柜后方时，对应展柜的蓝色遮蔽框会亮起；此时按 **Space** 可进入该展柜专属的姿势识别挑战。
 
-With Node.js and pnpm installed:
+每座展柜关联一张雕像参考图和一个独立姿势。开启顶部的「扫描摄像头」后，浏览器会在本地进行 MediaPipe 姿势识别：实时骨骼、目标姿势引导与匹配进度会同步显示。完成当前展柜的姿势即可结束本次扫描并回到原位置；成功伪装会让警卫重新进入巡逻状态。
+
+若警卫发现玩家，会开始追逐并持续抬升警戒值；警戒值达到 100% 时游戏结束。
+
+### 当前可用操作
+
+- **WASD / 方向键**：移动角色。
+- **点击顶部「开启扫描摄像头」**：请求或关闭浏览器摄像头权限；只在主地图中开启一次。
+- **藏在蓝框展柜后按 Space**：进入对应的姿势识别挑战。
+- **姿势挑战中再次按 Space**：放弃本次挑战并返回展厅。
+- **F2**：显示／隐藏碰撞体调试线。
+- **R**：重置角色位置。
+
+### 宝藏解锁界面方向
+
+本次提供的「图二」定义宝藏开锁环节的目标视觉：以红金色保险门为中心，顶部显示手势步骤链路，左右分别提供手势轮廓／完成确认与旋转反馈，底部显示多阶段进度。该界面属于第二环节中“完成展柜伪装后盗取宝藏”的下一步表现，尚未接入当前可运行原型。
+
+## 03 · 携宝逃脱（计划中）
+
+盗取宝藏后，游戏将进入逃脱阶段。玩家需要在携带宝藏的限制与追捕压力下寻找出口，结合警戒、路线选择和可能的手势机关，完成最终撤离。
+
+## 当前已实现
+
+- 1600 × 900 的像素风博物馆展厅与四个可躲藏展柜。
+- WASD／方向键移动、朝向切换、碰撞、植物和展柜遮挡层。
+- 警卫巡逻、视野锥、发现后追逐、警戒值 HUD 与 Game Over。
+- 展柜蓝色遮蔽状态、展柜对应雕像替换图与 85% 透明度反馈。
+- 四套独立的雕像姿势引导与浏览器本地的 MediaPipe Pose Landmarker 识别。
+- 主界面一次性摄像头开关；姿势界面复用同一视频流，不记录或上传视频帧与人体关键点。
+- 成功完成姿势挑战后，玩家会回到进入挑战前的展厅位置。
+
+## 运行项目
+
+需要 Node.js 和 pnpm：
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev
+```
+
+打开 Vite 输出的本地地址（通常是 `http://127.0.0.1:5173/`）。使用摄像头功能时，请在浏览器中允许本地页面访问摄像头。
+
+常用命令：
+
+```bash
 pnpm test
 pnpm build
 pnpm preview
 ```
 
-The production preview uses http://127.0.0.1:4173/. Alternatively, the Windows helper can build with:
+Windows 环境也可运行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Build
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-### Pose Shadow Lab handoff
+## 技术说明
 
-When the character is fully behind a display case and its blue frame is visible, press **Space** to open that case's pose-shadow challenge; press **Space** again to leave it. Start the camera to grant browser-local pose detection, then hold the single target pose represented by that display case. On completion the app returns to the room automatically. The MediaPipe model and runtime are loaded from public hosting on first use; camera frames and landmarks are not recorded or uploaded by this app.
+- **React + Vite**：界面层、摄像头权限与姿势挑战切换。
+- **Phaser 3**：展厅地图、角色与警卫移动、碰撞、遮挡和视野锥。
+- **MediaPipe Tasks Vision / Pose Landmarker Lite**：在浏览器本地执行单人上半身姿势识别。
+- **像素资源**：使用 nearest-neighbour 采样，保持原始像素风视觉。
 
-Dependencies are pinned in `package.json` and `pnpm-lock.yaml`: React/React DOM 19.3.1, Vite 8.3.7 and Phaser 3.90.0. This deliberately uses the documented Phaser 3 API. The project does not require the experimental UI-kit ZIP or the full composite concept image at runtime.
+主要代码位置：
 
-## Assets inspected and used
+- `src/main.jsx`：React 页面、摄像头开关与展厅／姿势界面切换。
+- `src/game/Room1.js`：展厅场景、警卫 AI、警戒与躲藏判定。
+- `src/game/config.js`：地图、展柜、角色、警卫与碰撞配置。
+- `src/pose-shadow-demo.jsx`：展柜专属姿势目标、骨骼绘制与匹配逻辑。
+- `src/styles.css`：HUD、像素风界面与响应式布局。
 
-The supplied `back.png` is character-free in the room but contains a baked top HUD. `Room1` selects the room texture frame below source y=90; React and Phaser draw the new static HUD separately. The complete concept image containing a fixed player, guard and red cone is **not loaded**.
+## 资源与致谢
 
-All four supplied player images contain a real alpha channel. Their actual facing is:
+团队提供的场景与像素资源、第三方库与 AI 协助记录在 [CREDITS.md](CREDITS.md)。素材来源与校验信息见 [ASSETS.md](ASSETS.md)。
 
-| Source file supplied by the team | Runtime copy | Facing |
-| --- | --- | --- |
-| `image 46.png` | `public/assets/player/right.png` | Right / D |
-| `image 47.png` | `public/assets/player/down.png` | Front / S |
-| `image 48.png` | `public/assets/player/up.png` | Back / W |
-| `image 49.png` | `public/assets/player/left.png` | Left / A |
-
-The pose challenge uses MediaPipe Tasks Vision / Pose Landmarker Lite for browser-local, single-person upper-body landmark detection. The web font is loaded from Google Fonts.
-
-Source PNGs are copied byte-for-byte. Visible-art rectangles and per-image feet positions create equal-sized runtime textures without flattening transparency, stretching art, or replacing missing directions. The same `sculpture.png` is reused for four separate display cases. Guard images were inspected but are not needed or bundled in this movement-only stage. See [ASSETS.md](ASSETS.md) for provenance and hashes.
-
-## Where to adjust the prototype
-
-- `src/game/config.js`: movement speed, spawn, source-image frames, feet body, walkable bounds and all obstacle coordinates. Obstacles use the background's original coordinate system and one shared mapping into the 16:9 scene.
-- `src/game/movement.js`: input normalisation and facing selection.
-- `src/game/plant-foreground.js`: alpha-guide cleanup and original-colour plant extraction; foliage is rendered separately from pot colliders.
-- `src/game/scenery-foreground.js`: source-colour bench/lower-lamp selection and compact foreground clipping paths.
-- `src/game/occlusion.js`: cached alpha masks and complete-character coverage checks for the exhibit underlay.
-- `src/game/Room1.js`: asset loading, Phaser scene, collision bodies, input lifecycle, reset and debug drawing.
-- `src/main.jsx`: React mount, canvas lifecycle, readable HUD labels, controls and loading/error feedback.
-- `src/styles.css`: responsive layout and pixel-image presentation.
-
-The small feet body deliberately permits moving visually behind tall art. Display cases, plant foregrounds and benches sort against the player's feet-y position. Each plant's full foliage is a transparent drawing layer; the central plant blocks its complete drawing rectangle, while the other seven retain their original pot-only collision. The benches block feet only at their lower bases; their upper artwork occludes characters behind them. The two lower lamps occlude without creating bodies, and their surrounding glow remains on the background. Source artwork is preserved using clipped instances of the original room texture. Collision outlines show the actual blocking rectangles. See [the plant extraction record](docs/plant-foreground.md).
-
-Exhibit highlighting uses the separate `public/assets/exhibits/sculpture2.png` layer below the original exhibit image. Its full source canvas is aligned through `EXHIBIT_HIGHLIGHT_ART.registration` in `config.js`; it is not flattened into the exhibit. See [exhibit layer setup](docs/exhibit-layers.md) before replacing exhibit artwork.
-
-## Verification and limits
-
-See [tests/TESTING.md](tests/TESTING.md) for checks actually run. Automated input/configuration tests and browser movement/collision checks are distinct from a human playtest. Physical mobile keyboards, touch controls, Safari/Firefox and prolonged performance have not been verified. The original reference contains soft shading, so nearest-neighbour rendering preserves its source appearance rather than turning it into a new hand-pixelled asset set.
-
-## Planned next stages
-
-The intended game has three rooms, a patrolling guard, visible detection cones, emergency upper-body pose imitation, and a final antique/treasure objective. Next, add one guard and an explicit pause/resume boundary before connecting a single MediaPipe pose. These features remain plans; running the current prototype does not request camera permission.
-
-The existing [project overview](museum-heist-project-overview.md) and [movement brief](codex-mvp-movement-brief.md) remain design documents. The older camera-based wording in the initial plan has evolved toward the supplied guard-based concept.
-
-## Credits and development
-
-Team-supplied artwork, third-party libraries and AI assistance are documented in [CREDITS.md](CREDITS.md). This pass adds a runnable MVP to the previously planning-only repository. No commit, push, public deployment or Canvas submission is performed automatically.
+本项目不会自动提交、推送或发布；所有远端更新均由明确指令触发。
