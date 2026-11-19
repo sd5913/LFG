@@ -63,4 +63,9 @@ button { font: inherit; }
 @keyframes dial-vanish { to { opacity: 0; transform: scale(.78); } }
 @keyframes chest-open { 0% { opacity: 0; clip-path: inset(38% 15% 19%); } 15% { opacity: 1; } 100% { opacity: 1; clip-path: inset(10% 15% 19%); } }
 @media (prefers-reduced-motion: reduce) { .unlock-success .dial { animation: dial-vanish .01ms both; } .unlock-success .dial-rotor { animation: none; } .unlock-success .open-shell { animation: chest-open .01ms both; } }
+.chest-preview .unlock-app { padding: 0; place-items: center; background: #06131f; }
+.chest-preview .unlock-stage { width: min(100vw, calc(100dvh * 830 / 655)); aspect-ratio: 830 / 655; border-radius: 0; box-shadow: none; transform: none; margin-bottom: 0; }
+.chest-preview .static-shell, .chest-preview .open-shell { left: -50.6024%; top: -19.084%; width: 201.3253%; height: 143.664%; max-width: none; }
+.chest-preview .dial { left: 15.783%; top: 8.244%; width: 69.4%; }
+.chest-preview .top-cards, .chest-preview .feedback-panel, .chest-preview .instruction-panel, .chest-preview .progress-track, .chest-preview .stage-controls, .chest-preview .unlock-message, .chest-preview .privacy-note { display: none; }
 @media (max-width: 720px) { .unlock-app { align-items: start; padding-top: 4vh; } .unlock-stage { width: 1671px; max-width: none; transform-origin: top left; transform: scale(calc((100vw - 24px) / 1671)); margin-bottom: calc((100vw - 24px) * -0.563); } .privacy-note { font-size: 9px; } }

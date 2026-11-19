@@ -127,5 +127,6 @@ buildStaticUi(); $('scan-toggle').addEventListener('click', () => state.scanning
 window.addEventListener('beforeunload', () => { state.stream?.getTracks().forEach((track) => track.stop()); state.landmarker?.close?.(); });
 reset(); requestAnimationFrame(frame);
 if (new URLSearchParams(location.search).get('preview') === 'success') {
+  document.body.classList.add('chest-preview');
   requestAnimationFrame(() => { $('unlock-stage').classList.add('unlock-success'); $('success-sequence').setAttribute('aria-hidden', 'false'); });
 }
