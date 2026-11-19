@@ -11,6 +11,7 @@
   <main class="unlock-app" aria-label="宝箱手势解锁">
     <section class="unlock-stage" id="unlock-stage" aria-label="四步手势解锁界面">
       <img class="static-shell" src="./assets/unlock-ui-components/backgrounds/ui_static_shell.png" alt="" />
+      <img class="open-shell" id="success-sequence" src="./assets/unlock-ui-components/backgrounds/ui_chest_open.png" alt="宝箱打开并发出金光" aria-hidden="true" />
       <div class="top-cards" id="top-cards" aria-label="解锁步骤"></div>
       <section class="feedback-panel" aria-label="实时手势识别反馈">
         <img class="feedback-preview" src="./assets/unlock-ui-components/backgrounds/ui_initial_uniform_preview.png" alt="" />
@@ -32,7 +33,6 @@
       <section class="progress-track" aria-label="解锁进度"><div class="progress-fill-mask"><img id="progress-fill" src="./assets/unlock-ui-components/progress/progress_fill_gold.png" alt="" /></div><div class="progress-nodes" id="progress-nodes"></div></section>
       <div class="stage-controls"><button class="scan-toggle" id="scan-toggle" type="button">开启手势扫描</button><button class="reset-toggle" id="reset-btn" type="button">重置</button><span class="scan-status" id="scan-status" role="status">摄像头未开启</span></div>
       <div class="unlock-message" id="unlock-message" role="status" aria-live="polite"></div>
-      <div class="success-sequence" id="success-sequence" aria-label="宝箱开启" aria-hidden="true"><div class="chest-opening"><div class="chest-light"></div></div><div class="chest-lid"></div></div>
       <video id="webcam" class="sensor-video" autoplay muted playsinline aria-hidden="true"></video>
     </section>
     <p class="privacy-note">手势仅在本机浏览器中分析；界面不会显示、录制或上传摄像头画面。</p>
