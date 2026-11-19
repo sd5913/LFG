@@ -38,12 +38,18 @@ function buildStaticUi() {
 function setStatus(text) { $('scan-status').textContent = text; }
 function message(text, success = false) { $('unlock-message').textContent = text; $('unlock-message').classList.toggle('success', success); }
 function reset() {
+  $('unlock-stage').classList.remove('unlock-success');
+  $('success-sequence').setAttribute('aria-hidden', 'true');
   machine.reset(); state.hand = null; state.lastGesture = GESTURES.NONE; state.lastSeen = 0;
   message(state.scanning ? '请从第一个手势开始解锁。' : '开启扫描后，依次完成四个手势。'); render(machine.snapshot());
 }
 function onMachineEvent(event) {
   if (event.type === 'step-complete') message(event.step === 'ROTATE' ? '宝箱已解锁！' : `第 ${event.stepIndex} 步完成，继续下一个手势。`, event.step === 'ROTATE');
-  if (event.type === 'unlocked') window.dispatchEvent(new CustomEvent('lfg:treasure-unlocked', { detail: { item: 'ancient-relic', unlocked: true } }));
+  if (event.type === 'unlocked') {
+    $('unlock-stage').classList.add('unlock-success');
+    $('success-sequence').setAttribute('aria-hidden', 'false');
+    window.dispatchEvent(new CustomEvent('lfg:treasure-unlocked', { detail: { item: 'ancient-relic', unlocked: true } }));
+  }
 }
 function render(snapshot) {
   const current = Math.min(snapshot.stepIndex, 3);
@@ -120,3 +126,6 @@ function frame(now) { infer(now); render(machine.update({ gesture: state.scannin
 buildStaticUi(); $('scan-toggle').addEventListener('click', () => state.scanning ? stopScan() : startScan()); $('reset-btn').addEventListener('click', reset);
 window.addEventListener('beforeunload', () => { state.stream?.getTracks().forEach((track) => track.stop()); state.landmarker?.close?.(); });
 reset(); requestAnimationFrame(frame);
+if (new URLSearchParams(location.search).get('preview') === 'success') {
+  requestAnimationFrame(() => { $('unlock-stage').classList.add('unlock-success'); $('success-sequence').setAttribute('aria-hidden', 'false'); });
+}
