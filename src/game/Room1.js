@@ -68,6 +68,13 @@ export default class Room1 extends Phaser.Scene {
     this.treasureDisplay = this.add.image(treasure.x, treasure.y, 'treasure-display').setOrigin(0.5, 1)
       .setDisplaySize(TREASURE_DISPLAY.width * ROOM_SCALE, TREASURE_DISPLAY.height * ROOM_SCALE)
       .setDepth(treasure.y);
+    this.treasureUnlocked = Boolean(this.resumeState?.treasureUnlocked);
+    if (this.treasureUnlocked) this.treasureDisplay.setTint(0xa8e5b1);
+    // The interaction area sits in front of the chest's low plinth. It does
+    // not change the existing physical collision body, so movement remains
+    // identical while the player has a clear place to start the unlock flow.
+    this.treasureInteractZone = new Phaser.Geom.Rectangle(treasure.x - 142, treasure.y - 8, 284, 128);
+    this.nearTreasure = false;
     this.hiddenExhibitId = null;
 
     this.blockers = this.physics.add.staticGroup();
@@ -92,7 +99,7 @@ export default class Room1 extends Phaser.Scene {
     this.debugGraphics = this.add.graphics().setDepth(20000);
     this.installInput();
     this.publish({ ready: true, error: '', facing: this.facing, moving: false, debug: false,
-      hiddenExhibitId: null, alertLevel: this.alertLevel, gameOver: false });
+      hiddenExhibitId: null, nearTreasure: false, treasureUnlocked: this.treasureUnlocked, alertLevel: this.alertLevel, gameOver: false });
   }
 
   createTextures() {
@@ -379,7 +386,7 @@ export default class Room1 extends Phaser.Scene {
 
   getResumeState() {
     if (!this.player) return null;
-    return { x: this.player.x, y: this.player.y, facing: this.facing, alertLevel: this.alertLevel, guard: this.guard && {
+    return { x: this.player.x, y: this.player.y, facing: this.facing, treasureUnlocked: this.treasureUnlocked, alertLevel: this.alertLevel, guard: this.guard && {
       x: this.guard.x, y: this.guard.y, facing: this.guardFacing, mode: this.guardState,
     } };
   }
@@ -406,6 +413,7 @@ export default class Room1 extends Phaser.Scene {
     }
     this.player.setDepth(this.player.y);
     this.updateExhibitHint();
+    this.updateTreasureHint();
     this.updateGuard(time);
     this.updateAlertLevel(delta);
     this.publish({ facing: this.facing, moving: input.vx !== 0 || input.vy !== 0 });
@@ -452,6 +460,13 @@ export default class Room1 extends Phaser.Scene {
       this.setExhibitHidden(exhibit, exhibit === hidden);
     }
     if (hiddenChanged) this.publish({ hiddenExhibitId });
+  }
+
+  updateTreasureHint() {
+    const nearTreasure = !this.treasureUnlocked && Phaser.Geom.Rectangle.Contains(this.treasureInteractZone, this.player.x, this.player.y);
+    if (nearTreasure === this.nearTreasure) return;
+    this.nearTreasure = nearTreasure;
+    this.publish({ nearTreasure });
   }
 
   setExhibitHidden(exhibit, hidden) {

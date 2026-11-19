@@ -4,9 +4,10 @@ import Phaser from 'phaser';
 import Room1 from './game/Room1.js';
 import { GAME } from './game/config.js';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
+import { TreasureUnlock } from './treasure-unlock.jsx';
 import './styles.css';
 
-function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, onToggleCamera }) {
+function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatus, cameraError, onToggleCamera }) {
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
@@ -35,16 +36,21 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
   }, []);
 
   useEffect(() => {
-    const openPoseDemo = event => {
-      if (event.code !== 'Space' || event.repeat || !state.hiddenExhibitId) return;
+    const openInteraction = event => {
+      if (event.code !== 'Space' || event.repeat) return;
       event.preventDefault();
-      if (cameraStatus !== 'ready') return;
       const scene = gameRef.current?.scene.getScene('Room1');
+      if (state.nearTreasure && !state.treasureUnlocked) {
+        onTreasureUnlock(scene?.getResumeState() ?? null);
+        return;
+      }
+      if (!state.hiddenExhibitId) return;
+      if (cameraStatus !== 'ready') return;
       onPoseDemo(state.hiddenExhibitId, scene?.getResumeState() ?? null);
     };
-    window.addEventListener('keydown', openPoseDemo);
-    return () => window.removeEventListener('keydown', openPoseDemo);
-  }, [cameraStatus, onPoseDemo, state.hiddenExhibitId]);
+    window.addEventListener('keydown', openInteraction);
+    return () => window.removeEventListener('keydown', openInteraction);
+  }, [cameraStatus, onPoseDemo, onTreasureUnlock, state.hiddenExhibitId, state.nearTreasure, state.treasureUnlocked]);
 
   return <main className="game-shell">
     <section className="stage-shell" aria-label="Museum Heist 游戏区域">
@@ -74,7 +80,9 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
       {state.gameOver && <section className="game-over-panel" role="alert">
         <span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button>
       </section>}
-      {state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? '安全遮蔽中 · 按空格键开始姿势扫描' : '安全遮蔽中 · 请先点击上方“开启扫描摄像头”'}</p>}
+      {state.nearTreasure && !state.treasureUnlocked && <p className="room-pose-hint">宝箱就在前方 · 按空格键开始手势解锁</p>}
+      {!state.nearTreasure && state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? '安全遮蔽中 · 按空格键开始姿势扫描' : '安全遮蔽中 · 请先点击上方“开启扫描摄像头”'}</p>}
+      {state.treasureUnlocked && <p className="room-treasure-hint">宝箱已解锁 · 继续前进</p>}
       {!state.ready && <div className="loading-panel" role={state.error ? 'alert' : 'status'}>
         <span className="panel-index">ROOM 01</span>
         <p>{state.error || '正在准备展厅与角色素材…'}</p>
@@ -86,6 +94,7 @@ function RoomExperience({ onPoseDemo, resumeState, cameraStatus, cameraError, on
 
 function App() {
   const [activeExhibitId, setActiveExhibitId] = useState(null);
+  const [treasureUnlockActive, setTreasureUnlockActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [resumeState, setResumeState] = useState(null);
   const cameraStreamRef = useRef(null);
@@ -119,13 +128,13 @@ function App() {
 
   useEffect(() => {
     if (!activeExhibitId) return undefined;
-    const exitPoseDemo = event => {
+    const exitChallenge = event => {
       if (event.code !== 'Space' || event.repeat) return;
       event.preventDefault();
       setActiveExhibitId(null);
     };
-    window.addEventListener('keydown', exitPoseDemo);
-    return () => window.removeEventListener('keydown', exitPoseDemo);
+    window.addEventListener('keydown', exitChallenge);
+    return () => window.removeEventListener('keydown', exitChallenge);
   }, [activeExhibitId]);
 
   if (gameOver) return <main className="game-shell"><section className="stage-shell game-over-stage">
@@ -148,6 +157,15 @@ function App() {
     }}
   />;
 
+  if (treasureUnlockActive) return <TreasureUnlock
+    cameraStream={cameraStreamRef.current}
+    onExit={() => setTreasureUnlockActive(false)}
+    onComplete={() => {
+      setResumeState((previous) => previous ? { ...previous, treasureUnlocked: true } : previous);
+      setTreasureUnlockActive(false);
+    }}
+  />;
+
   return <RoomExperience
     resumeState={resumeState}
     cameraStatus={cameraStatus}
@@ -156,6 +174,10 @@ function App() {
     onPoseDemo={(exhibitId, playerState) => {
       setResumeState(playerState);
       setActiveExhibitId(exhibitId);
+    }}
+    onTreasureUnlock={(playerState) => {
+      setResumeState(playerState);
+      setTreasureUnlockActive(true);
     }}
   />;
 }
