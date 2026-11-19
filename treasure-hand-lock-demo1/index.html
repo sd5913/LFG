@@ -13,15 +13,16 @@
       <img class="static-shell" src="./assets/unlock-ui-components/backgrounds/ui_static_shell.png" alt="" />
       <div class="top-cards" id="top-cards" aria-label="解锁步骤"></div>
       <section class="feedback-panel" aria-label="实时手势识别反馈">
-        <img class="feedback-preview" src="./assets/unlock-ui-components/backgrounds/ui_initial_uniform_preview.png" alt="" />
-        <img class="feedback-detection" id="feedback-detection" src="./assets/unlock-ui-components/feedback/live_pinch_detection_overlay.png" alt="" />
+        <canvas class="hand-skeleton" id="hand-skeleton" width="640" height="480" aria-label="实时手势骨架"></canvas>
         <img class="feedback-check" id="feedback-check" src="./assets/unlock-ui-components/feedback/recognition_check_green.png" alt="" />
         <div class="feedback-copy" aria-live="polite"><span id="feedback-kicker">识别待机</span><strong id="gesture-name">等待开启扫描</strong><small id="feedback-detail">点击上方按钮开始本地手势识别</small></div>
+        <div class="hand-hold-progress" aria-label="当前手势保持进度"><span id="hold-progress-label">保持进度 0.0 / 2.0 秒</span><div><i id="hold-progress-fill"></i></div></div>
       </section>
       <section class="dial" aria-label="解锁转盘">
         <img class="dial-rotor" id="dial-rotor" src="./assets/unlock-ui-components/dial/dial_rotor.png" alt="解锁转盘" />
         <img class="dial-hub" src="./assets/unlock-ui-components/dial/dial_hub_keyhole.png" alt="钥匙孔" />
         <img class="dial-pointer" src="./assets/unlock-ui-components/dial/dial_pointer.png" alt="" />
+        <img class="dial-rotation-cue" src="./assets/unlock-ui-components/feedback/rotation_arrow_clockwise.png" alt="顺时针旋转示意" />
       </section>
       <section class="instruction-panel" aria-label="当前目标手势">
         <img class="target-icon" id="target-icon" src="./assets/unlock-ui-components/instruction-icons/gesture_index_gold.png" alt="食指手势" />

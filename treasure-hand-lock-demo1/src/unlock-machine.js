@@ -1,8 +1,8 @@
 /** Shared step logic. Reuse in a Phaser/React parent by calling .update() each frame. */
 export const STEPS = Object.freeze([
-  {id:'POINT',title:'Point / 寻找锁孔',instruction:'伸出食指，其余手指握起',holdMs:650},
-  {id:'PINCH',title:'Pinch / 捏住钥匙',instruction:'拇指与食指指尖捏合',holdMs:700},
-  {id:'FIST',title:'Grab / 握住锁柄',instruction:'所有手指握拳',holdMs:700},
+  {id:'POINT',title:'Point / 寻找锁孔',instruction:'伸出食指，其余手指握起并保持 2 秒',holdMs:2000},
+  {id:'PINCH',title:'Pinch / 捏住钥匙',instruction:'拇指与食指指尖捏合并保持 2 秒',holdMs:2000},
+  {id:'FIST',title:'Grab / 握住锁柄',instruction:'所有手指握拳并保持 2 秒',holdMs:2000},
   {id:'ROTATE',title:'Rotate / 旋转开锁',instruction:'保持握拳，将手在画面内倾斜至少 50°',holdMs:0},
 ]);
 export const ROTATION_TARGET_RAD = 50*Math.PI/180;
@@ -32,7 +32,9 @@ export class UnlockMachine {
     // Keep previous progress across a short visual-tracking flicker, but never AWARD progress for missing data.
     if(this.stepIndex<3) {
       if(matches){this.holdMs+=dt;this.lastMatchedAt=now;}
-      else if(this.lastMatchedAt==null || now-this.lastMatchedAt>220){this.holdMs=Math.max(0,this.holdMs-dt*1.7);}
+      // Keep a short grace window for normal webcam landmark flicker. Progress
+      // is still never awarded while the target gesture is missing.
+      else if(this.lastMatchedAt==null || now-this.lastMatchedAt>400){this.holdMs=Math.max(0,this.holdMs-dt*.9);}
       if(this.holdMs>=this.step.holdMs)this.advance(now);
     } else {
       if(matches && Number.isFinite(angle)){

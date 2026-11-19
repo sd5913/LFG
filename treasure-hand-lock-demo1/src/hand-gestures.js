@@ -8,8 +8,10 @@ export const GESTURES = Object.freeze({
   NONE:'NONE', POINT:'POINT', PINCH:'PINCH', FIST:'FIST', OPEN:'OPEN', UNKNOWN:'UNKNOWN'
 });
 export const DEFAULT_THRESHOLDS = Object.freeze({
-  pinch:0.36, // thumb-tip <> index-tip distance / palm width
-  pointExtend:1.65, otherCurl:1.55, fistCurl:1.52, fistIndex:1.5
+  // Slightly forgiving webcam thresholds. Landmark jitter and foreshortening
+  // should not force players to hold an unnaturally precise pose.
+  pinch:0.46, // thumb-tip <> index-tip distance / palm width
+  pinchIndex:1.0, pointExtend:1.4, otherCurl:1.8, fistCurl:1.8, fistIndex:1.3
 });
 const D = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
 const ratio = (pts,mcp,pip,tip)=> D(pts[tip],pts[mcp])/Math.max(D(pts[pip],pts[mcp]),1e-5);
@@ -24,7 +26,7 @@ export function analyzeHand(landmarks, thresholds={}) {
   const r={index:ratio(landmarks,5,6,8),middle:ratio(landmarks,9,10,12),ring:ratio(landmarks,13,14,16),pinky:ratio(landmarks,17,18,20)};
   const othersCurled = [r.middle,r.ring,r.pinky].every(x=>x<t.otherCurl);
   const isFist = r.index < t.fistIndex && [r.middle,r.ring,r.pinky].every(x=>x<t.fistCurl);
-  const isPinch = pinchDistance<t.pinch && r.index>1.20; // pinch takes priority when index is partially open
+  const isPinch = pinchDistance<t.pinch && r.index>t.pinchIndex; // pinch takes priority when index is partially open
   const isPoint = r.index>t.pointExtend && othersCurled && pinchDistance>=t.pinch;
   const isOpen = [r.index,r.middle,r.ring,r.pinky].every(x=>x>1.65);
   // Angle between index/pinky knuckles: rotation in the IMAGE plane only.

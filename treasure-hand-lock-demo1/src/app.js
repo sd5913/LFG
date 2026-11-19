@@ -1,4 +1,4 @@
-import { analyzeHand, GESTURES } from './hand-gestures.js';
+import { analyzeHand, GESTURES, HAND_EDGES } from './hand-gestures.js';
 import { UnlockMachine, STEPS } from './unlock-machine.js';
 
 const TASKS_VERSION = '0.10.14';
@@ -8,6 +8,8 @@ const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_lan
 const ASSET_ROOT = './assets/unlock-ui-components';
 const $ = (id) => document.getElementById(id);
 const video = $('webcam');
+const skeleton = $('hand-skeleton');
+const skeletonCtx = skeleton.getContext('2d');
 const cardAssets = ['gesture_step_01_index', 'gesture_step_02_pinch', 'gesture_step_03_fist', 'gesture_step_04_side_fist'];
 const targetAssets = ['gesture_index_gold.png', 'gesture_pinch_gold.png', 'gesture_fist_gold.png', 'gesture_side_fist_gold.png'];
 const cardLefts = [20.82, 38.3, 55.3, 70.92];
@@ -39,6 +41,7 @@ function setStatus(text) { $('scan-status').textContent = text; }
 function message(text, success = false) { $('unlock-message').textContent = text; $('unlock-message').classList.toggle('success', success); }
 function reset() {
   machine.reset(); state.hand = null; state.lastGesture = GESTURES.NONE; state.lastSeen = 0;
+  skeletonCtx.clearRect(0, 0, skeleton.width, skeleton.height);
   message(state.scanning ? '请从第一个手势开始解锁。' : '开启扫描后，依次完成四个手势。'); render(machine.snapshot());
 }
 function onMachineEvent(event) {
@@ -55,7 +58,11 @@ function render(snapshot) {
   feedback.classList.toggle('matching', matches || snapshot.unlocked);
   $('feedback-kicker').textContent = snapshot.unlocked ? '解锁完成' : matches ? '目标手势匹配' : state.scanning ? '实时手势识别' : '识别待机';
   $('gesture-name').textContent = snapshot.unlocked ? '宝箱已开启' : (state.scanning ? labels[state.lastGesture] || '正在识别' : '等待开启扫描');
-  $('feedback-detail').textContent = snapshot.unlocked ? '四个目标手势已完成' : matches ? '保持当前动作以累积进度' : state.scanning ? '将一只手置于摄像头前' : '点击上方按钮开始本地手势识别';
+  $('feedback-detail').textContent = snapshot.unlocked ? '四个目标手势已完成' : matches ? (current < 3 ? '保持当前动作满 2 秒' : '保持握拳并旋转手腕') : state.scanning ? '将一只手置于摄像头前' : '点击上方按钮开始本地手势识别';
+  const isTimedStep = current < 3 && !snapshot.unlocked;
+  const progressLabel = isTimedStep ? `保持进度 ${(snapshot.progress * 2).toFixed(1)} / 2.0 秒` : snapshot.unlocked ? '解锁完成' : `旋转进度 ${snapshot.rotationDegrees}° / 50°`;
+  $('hold-progress-label').textContent = progressLabel;
+  $('hold-progress-fill').style.transform = `scaleX(${snapshot.unlocked ? 1 : snapshot.progress})`;
   document.querySelectorAll('.gesture-card').forEach((card, index) => {
     const status = snapshot.unlocked || index < snapshot.stepIndex ? 'completed' : showActiveStep && index === current ? 'selected' : 'idle';
     card.classList.toggle('selected', status === 'selected'); card.classList.toggle('completed', status === 'completed');
@@ -73,7 +80,9 @@ function render(snapshot) {
   document.querySelector('.instruction-panel').classList.toggle('rotate', current === 3 && !snapshot.unlocked);
   const rotation = current === 3 ? Math.min(snapshot.rotationDegrees, 75) : Math.min(18, (current + snapshot.progress) * 6);
   $('dial-rotor').style.transform = `rotate(${rotation}deg)`;
-  document.querySelector('.dial').classList.toggle('active', matches || (current === 3 && snapshot.progress > 0));
+  const dial = document.querySelector('.dial');
+  dial.classList.toggle('active', matches || (current === 3 && snapshot.progress > 0));
+  dial.classList.toggle('rotating', current === 3 && !snapshot.unlocked);
 }
 async function startScan() {
   if (state.loading || state.scanning) return;
@@ -102,6 +111,7 @@ function stopScan(showMessage = true) {
   ++state.session; state.loading = false; state.scanning = false; state.hand = null; state.lastGesture = GESTURES.NONE;
   if (state.stream) state.stream.getTracks().forEach((track) => track.stop());
   state.stream = null; video.pause(); video.srcObject = null; state.landmarker?.close?.(); state.landmarker = null;
+  skeletonCtx.clearRect(0, 0, skeleton.width, skeleton.height);
   $('scan-toggle').textContent = '开启手势扫描'; $('scan-toggle').classList.remove('scanning');
   if (showMessage) message('手势扫描已关闭。摄像头画面从未显示或保存。');
   setStatus('摄像头未开启'); render(machine.snapshot());
@@ -114,7 +124,24 @@ function infer(now) {
     const result = state.landmarker.detectForVideo(video, now); const points = result.landmarks?.[0] || null;
     state.hand = points ? analyzeHand(points) : null; state.lastGesture = state.hand?.gesture || GESTURES.NONE;
     if (points) state.lastSeen = now;
-  } catch { state.lastGesture = GESTURES.NONE; }
+    drawSkeleton(points, state.hand?.gesture === (machine.stepIndex === 3 ? GESTURES.FIST : machine.step.id));
+  } catch { state.lastGesture = GESTURES.NONE; drawSkeleton(null, false); }
+}
+function drawSkeleton(points, matches) {
+  skeletonCtx.clearRect(0, 0, skeleton.width, skeleton.height);
+  if (!points) return;
+  const width = skeleton.width, height = skeleton.height;
+  skeletonCtx.lineCap = 'round'; skeletonCtx.lineJoin = 'round'; skeletonCtx.lineWidth = 10;
+  skeletonCtx.strokeStyle = matches ? '#70ffc0' : '#36e8f1';
+  skeletonCtx.shadowColor = matches ? '#54ff9e' : '#2ed9e7'; skeletonCtx.shadowBlur = 16;
+  skeletonCtx.beginPath();
+  for (const [from, to] of HAND_EDGES) { skeletonCtx.moveTo(points[from].x * width, points[from].y * height); skeletonCtx.lineTo(points[to].x * width, points[to].y * height); }
+  skeletonCtx.stroke();
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index]; skeletonCtx.beginPath(); skeletonCtx.arc(point.x * width, point.y * height, [4, 8, 12, 16, 20].includes(index) ? 12 : 7, 0, Math.PI * 2);
+    skeletonCtx.fillStyle = [4, 8].includes(index) ? '#ffd260' : '#e9ffff'; skeletonCtx.fill();
+  }
+  skeletonCtx.shadowBlur = 0;
 }
 function frame(now) { infer(now); render(machine.update({ gesture: state.scanning ? state.lastGesture : GESTURES.NONE, angle: state.hand?.angle ?? null, now })); requestAnimationFrame(frame); }
 buildStaticUi(); $('scan-toggle').addEventListener('click', () => state.scanning ? stopScan() : startScan()); $('reset-btn').addEventListener('click', reset);

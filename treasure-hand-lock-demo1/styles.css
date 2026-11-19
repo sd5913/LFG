@@ -14,20 +14,24 @@ button { font: inherit; }
 .gesture-card.selected .selection-frame, .gesture-card.completed .completed-check { opacity: 1; }
 .gesture-card.completed .completed-check { transform: scale(1); }
 .feedback-panel { left: 5.8%; top: 30.1%; width: 17.2%; height: 32.2%; overflow: hidden; }
-.feedback-preview { position: absolute; width: 582.2%; height: 310.6%; max-width: none; left: -33.8%; top: -106.6%; opacity: .72; }
-.feedback-detection { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .18; transition: opacity .15s ease, filter .15s ease; }
-.feedback-check { position: absolute; right: 4%; bottom: 9%; width: 27%; opacity: 0; filter: drop-shadow(0 0 9px #44ff82); transition: opacity .15s ease; }
-.feedback-panel.matching .feedback-detection { opacity: .78; filter: drop-shadow(0 0 8px #38eee8); }
+.hand-skeleton { position: absolute; inset: 8% 7% 26%; width: 86%; height: 66%; transform: scaleX(-1); }
+.feedback-check { position: absolute; right: 4%; bottom: 14%; width: 27%; opacity: 0; filter: drop-shadow(0 0 9px #44ff82); transition: opacity .15s ease; }
 .feedback-panel.matching .feedback-check { opacity: 1; }
-.feedback-copy { position: absolute; left: 8%; right: 8%; bottom: 6%; text-align: center; line-height: 1.15; text-shadow: 0 2px 4px #00111b; }
+.feedback-copy { position: absolute; left: 8%; right: 8%; bottom: 17%; text-align: center; line-height: 1.15; text-shadow: 0 2px 4px #00111b; }
 .feedback-copy span, .instruction-copy span { display: block; color: #78edff; font-size: clamp(6px, .62vw, 11px); letter-spacing: .12em; }
 .feedback-copy strong { display: block; margin: 3% 0 1%; color: #f9d47b; font-size: clamp(8px, .78vw, 14px); }
 .feedback-copy small { display: block; color: #c8e6eb; font-size: clamp(5px, .53vw, 9px); }
+.hand-hold-progress { position: absolute; left: 10%; right: 10%; bottom: 5.5%; color: #a9f6ff; font-size: clamp(5px, .48vw, 9px); letter-spacing: .04em; text-align: center; text-shadow: 0 1px 3px #00111b; }
+.hand-hold-progress > div { height: clamp(3px, .35vw, 6px); margin-top: 4%; overflow: hidden; border: 1px solid #61d4e5; border-radius: 999px; background: #061a2a; box-shadow: 0 0 7px #25c6d860 inset; }
+.hand-hold-progress i { display: block; width: 100%; height: 100%; transform: scaleX(0); transform-origin: left center; background: linear-gradient(90deg, #2de7ef, #87ffc2); box-shadow: 0 0 10px #69ffd8; transition: transform .1s linear; }
 .dial { left: 33%; top: 19%; width: 34.47%; aspect-ratio: 1; }
 .dial-rotor { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(0deg); transform-origin: center; transition: transform .12s linear, filter .2s ease; }
 .dial.active .dial-rotor { filter: drop-shadow(0 0 16px #ffad36aa); }
 .dial-hub { position: absolute; left: 32.95%; top: 36.1%; width: 34.55%; z-index: 2; }
 .dial-pointer { position: absolute; left: 42%; top: -.85%; width: 15.28%; z-index: 3; }
+.dial-rotation-cue { position: absolute; z-index: 4; right: 4%; bottom: 10%; width: 21%; opacity: 0; filter: drop-shadow(0 0 9px #ffaf2f); pointer-events: none; transform: translateY(5%) scale(.88); transition: opacity .2s ease, transform .2s ease; }
+.dial.rotating .dial-rotation-cue { opacity: 1; transform: translateY(0) scale(1); animation: rotation-cue 1s ease-in-out infinite; }
+@keyframes rotation-cue { 50% { filter: drop-shadow(0 0 16px #ffd05a); transform: translateY(-3%) scale(1.04); } }
 .instruction-panel { left: 76.84%; top: 30%; width: 17.4%; height: 32.5%; overflow: hidden; }
 .target-icon { position: absolute; width: 31%; height: auto; left: 34%; top: 23%; filter: drop-shadow(0 0 6px #ffa42688); }
 .target-rotate, .rotation-arrow { position: absolute; opacity: 0; transition: opacity .2s ease; }
@@ -39,7 +43,7 @@ button { font: inherit; }
 .instruction-copy strong { display: block; color: #ffcf62; margin: 2% 0; font-size: clamp(8px, .76vw, 13px); }
 .instruction-copy small { color: #d9eced; display: block; font-size: clamp(5px, .52vw, 9px); }
 .progress-track { left: 19.8%; top: 82.6%; width: 59.8%; height: 13%; }
-.progress-fill-mask { position: absolute; left: 2%; right: 2%; top: 24%; height: 30%; overflow: hidden; border-radius: 100px; }
+.progress-fill-mask { position: absolute; left: 2%; right: 2%; top: 36%; height: 30%; overflow: hidden; border-radius: 100px; }
 .progress-fill-mask img { position: absolute; left: 0; top: 0; height: 100%; width: 100%; transform-origin: left center; transform: scaleX(0); transition: transform .16s ease-out; }
 .progress-nodes { position: absolute; inset: 0; }
 .progress-node { position: absolute; top: 1%; width: 12.7%; aspect-ratio: 127 / 123; transition: transform .15s ease; }
