@@ -4,7 +4,7 @@ import {TOTAL_LENGTH,HAZARDS,VALVES,routeAt,movementForKey,clampAtLockedValve,
   safeFromSteam,steamState,crawlRate} from '../src/route.js';
 
 test('simulated real-time run waits for OFF windows, jumps all gaps, opens gates and reaches exit',()=>{
- const dt=1/60, speed=218, jumpDur=1.2;
+ const dt=1/60, speed=218, jumpDur=1.16;
  let s=0,t=0,crawlClock=0,jump=null,heldAtGap=0,leaps=0;
  const opened={left:false,right:false},passed=new Set();
  for(let tick=0;tick<12000 && s<TOTAL_LENGTH-1;tick++){
@@ -16,7 +16,7 @@ test('simulated real-time run waits for OFF windows, jumps all gaps, opens gates
   if(next && jump===null){
    const st=steamState(next,t);
    // Hold at the approach marker until a sufficiently long OFF window arrives.
-   if(next.center-s<146 && (st.active||st.remaining<1.2)){
+   if(next.center-s<146 && (st.active||st.remaining<1.12)){
     heldAtGap++;
     wait=true;
    }else if(next.center-s<146){jump=0;leaps++;}

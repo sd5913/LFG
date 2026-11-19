@@ -23,10 +23,18 @@ window.addEventListener('lfg:pipe-valve-opened', (event) => {
 7. Original canvas resolution is 1671×941. Game canvas scales with CSS but route coordinate math remains original-space; do not rescale input positions twice.
 8. Browser end-to-end visual validation was blocked by current execution environment's browser policy. Source code unit tests and deterministic gameplay simulation completed; validate the displayed interface and gesture camera on the team's Chrome/Edge machine before merging.
 
-## v1.1 视觉与交互补丁
+## v1.2 视觉与交互补丁
 
 - 额外加载 `assets/overlays/pipe_repairs_ladders.png`：原图背景和 manifest 管道之后、小偷之前绘制，修补缺口并增加左侧/出口梯子。
 - 额外加载 `assets/overlays/pipe_foreground_braces.png`：小偷**之后**绘制，保持橙金色管道卡箍的景深遮挡。不能把整个不透明管道材质原图全部叠回去，否则小偷会完全消失。
 - **未修改 manifest 的原始坐标**，新增梯子刚好对应现有六段受约束路线中的 `left-rise` 和 `right-down`。
 - 新碰撞逻辑在 `src/route.js`：`steamState(h, elapsed)` 返回 `{active, remaining}`；`safeFromSteam(s, jumpElapsed, elapsed)` 仅在 OFF 且跳跃高度足够时允许穿越断口。
 - `crawlRate(elapsed)` 创建间歇式位移脉冲，替代 v1.0 的匀速位置更新。新增的 `state.crawlClock` / `state.hurtTimer` 应在关卡重置时清空。
+
+
+## v1.2 Gameplay Additions
+
+- Rat hazard system added entirely in `src/game.js`.
+- Thief now uses two climb sprites (`assets/thief/up_a.png`, `up_b.png`) and directional jump sprites (`jump_left.png`, `jump_right.png`).
+- Extra rat sprites are stored in `assets/rats/`.
+- Overlay repair image updated to close the top-right valve pipe gap and resize the left ladder.

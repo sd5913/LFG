@@ -1,10 +1,10 @@
-# LFG — Room 01：地下管道潜入 v1.1
+# LFG — Room 01：地下管道潜入 v1.2
 
 在 v1.0 的基础上按实际试玩反馈修复五个问题：补左侧与右侧竖梯、修补左上管道缺口、爬行动作节奏、间歇性蒸汽、管道金属卡箍前景遮挡。使用你上传的 **原始背景、管道、阀门、梯子和小偷立绘**；`assets/manifest.json` 未改动。**没有修改小组 GitHub 主分支。**
 
 ## 在 VS Code 运行
 
-1. 解压 ZIP，用 VS Code **打开 `LFG_Pipe_Room_01_v1.1` 文件夹**（里面应看到 `package.json`）。
+1. 解压 ZIP，用 VS Code **打开 `LFG_Pipe_Room_01_v1.2` 文件夹**（里面应看到 `package.json`）。
 2. 菜单 Terminal → New Terminal，输入 `npm start`。
 3. Chrome / Edge 打开 http://localhost:5173 。无需 `npm install`。
 4. 如果旧版已经占用 5173，在旧版 Terminal 按 `Ctrl+C`。也可以用 PowerShell `$env:PORT=5174; npm start`，然后打开 http://localhost:5174 。
@@ -55,3 +55,13 @@
 在 VS Code 输入 `npm test`：**23 项 Node 逻辑测试通过**，包括一个考虑蒸汽周期、等待 OFF、起跳、双阀门和完整路线的模拟通关测试。地图外观已按原始素材重建并生成 `preview_repaired_map.jpg` 核对。浏览器自动化环境拦截了本地页面，因此**无法声称已经在真实浏览器或摄像头完成端到端测试**；请在你的 Windows Chrome / Edge 试玩后检查画面遮挡与角色体感。
 
 本项目只用了你上传的美术素材及由它们重新裁剪/合成的覆盖层，不含额外第三方游戏资产。
+
+
+## v1.2 新增 / Revised in v1.2
+
+- 修补右上 valve 周围的顶层管道接缝。
+- 重做左侧梯子尺寸与位置，使其更贴合弯管。
+- 小偷竖向攀爬时，交替使用两张攀梯立绘。
+- 跳跃时根据方向切换向左 / 向右跳跃立绘。
+- 三处喷气的停喷窗口缩短，危险效果更强。
+- 新增老鼠机制：随机刷出、追击、咬伤、保安警觉值 3/3 后失败重试。
