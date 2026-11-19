@@ -4,16 +4,16 @@
 <title>LFG · Museum Heist / Pipe Room 01</title><link rel="stylesheet" href="styles.css">
 </head><body>
 <div class="shell">
-<header class="topbar"><div class="brand"><span class="logo">◈</span><div><strong>LFG / MUSEUM HEIST</strong><small>ROOM 01 · SERVICE PIPE INFILTRATION</small></div></div><div class="top-right"><span class="live-dot">● PLAYABLE PROTOTYPE</span><span class="version">v1.0</span></div></header>
-<section class="intro"><div><p class="eyebrow">CHAPTER 01 / THE UNDERGROUND WAY</p><h1>潜入 · 地下管道</h1><p>沿管道潜行，穿过三处持续喷气的断口，用手势旋开两座阀门，抵达博物馆大厅入口。</p></div><div class="stats"><span>TIME <b id="clock">00:00</b></span><span>VALVES <b id="valves">0 / 2</b></span><span>STEAM <b id="steam-count">0 / 3</b></span><span>RETRIES <b id="fails">0</b></span></div></section>
+<header class="topbar"><div class="brand"><span class="logo">◈</span><div><strong>LFG / MUSEUM HEIST</strong><small>ROOM 01 · SERVICE PIPE INFILTRATION</small></div></div><div class="top-right"><span class="live-dot">● PLAYABLE PROTOTYPE</span><span class="version">v1.1</span></div></header>
+<section class="intro"><div><p class="eyebrow">CHAPTER 01 / THE UNDERGROUND WAY</p><h1>潜入 · 地下管道</h1><p>沿管道潜行，等待三处喷气断口短暂停喷，再起跳通过，用手势旋开两座阀门，抵达博物馆大厅入口。</p></div><div class="stats"><span>TIME <b id="clock">00:00</b></span><span>VALVES <b id="valves">0 / 2</b></span><span>STEAM <b id="steam-count">0 / 3</b></span><span>RETRIES <b id="fails">0</b></span></div></section>
 <div class="hud-rail"><div class="hud-progress"><i id="overall-progress"></i></div><div class="hud-sub"><span id="region">入口 · 底层管道</span><span id="percent">0% COMPLETE</span></div></div>
 <div class="game-frame" id="game-frame">
 <canvas id="game" width="1671" height="941" role="img" aria-label="包含底层、中层和顶层管道的博物馆地下关卡"></canvas>
-<div class="in-game-status"><span id="stage-badge">01 / 下水道入口</span><span class="hazard-badge">♨ 3 处持续喷气断口</span></div>
-<div class="game-prompt" id="game-prompt"><strong id="prompt-title">准备潜入</strong><span id="prompt-desc">← → 进入管道 · 靠近断口按 Space 跳跃</span></div>
+<div class="in-game-status"><span id="stage-badge">01 / 下水道入口</span><span class="hazard-badge">♨ 3 处间歇喷气 · 等待 OFF</span></div>
+<div class="game-prompt" id="game-prompt"><strong id="prompt-title">准备潜入</strong><span id="prompt-desc">← → 进入管道 · 等喷气 OFF 后按 Space 跳跃</span></div>
 <div class="result" id="result" hidden><div class="result-card"><span class="result-icon">✦</span><p>MISSION COMPLETE</p><h2>成功潜入博物馆大厅！</h2><span id="result-summary">已通过 3 个蒸汽断口和 2 座阀门。</span><button id="play-again" class="btn primary">↺ 再玩一次</button></div></div>
 </div>
-<div class="control-bar"><div><b>MOVE</b><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>/ 方向键</span></div><div><b>JUMP</b><kbd>SPACE</kbd><span>跨越喷气断口</span></div><div><b>VALVE</b><kbd>E</kbd><span>触发手势解锁</span></div><button class="btn outline" id="restart">↺ 重新开始</button></div>
+<div class="control-bar"><div><b>MOVE</b><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>/ 方向键</span></div><div><b>JUMP</b><kbd>SPACE</kbd><span>仅在喷气 OFF 时跨越断口</span></div><div><b>VALVE</b><kbd>E</kbd><span>触发手势解锁</span></div><button class="btn outline" id="restart">↺ 重新开始</button></div>
 <div class="mobile-control" aria-label="屏幕操作按钮"><button data-key="ArrowLeft">←</button><button data-key="ArrowUp">↑</button><button data-key="ArrowDown">↓</button><button data-key="ArrowRight">→</button><button data-key="Space">跳跃</button><button data-key="KeyE">阀门</button></div>
 <div class="footnotes"><span>路线严格沿你提供的管道素材布局 · 不可离开管道自由移动</span><span>Camera gesture recognition is optional · Keyboard fallback is clearly labeled</span></div>
 </div>

@@ -1,9 +1,15 @@
 {
   "name": "lfg-pipe-room-01-demo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "private": true,
-  "description": "Museum Heist - playable pipe room level with gesture valves",
-  "scripts": { "start": "node server.mjs", "dev": "node server.mjs", "test": "node --test tests/*.test.js" },
-  "engines": { "node": ">=18" }
+  "description": "Museum Heist - pipe room with climbing ladders, intermittent steam, rhythm crawl, foreground occlusion and gesture valves",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

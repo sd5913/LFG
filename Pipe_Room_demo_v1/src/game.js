@@ -1,10 +1,10 @@
-import {SEGMENTS,TOTAL_LENGTH,HAZARDS,VALVES,routeAt,clamp,jumpHeight,hazardAt,movementForKey,keyDirection,clampAtLockedValve} from './route.js';
+import {SEGMENTS,TOTAL_LENGTH,HAZARDS,VALVES,routeAt,clamp,jumpHeight,hazardAt,movementForKey,keyDirection,clampAtLockedValve,steamState,safeFromSteam,crawlRate} from './route.js';
 import {ValveGestureSequence} from './gesture-valve.js';
 const $=id=>document.getElementById(id);
 const canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false});
-const WIDTH=1671,HEIGHT=941,PLAYER_SPEED=272,JUMP_DURATION=.94;
+const WIDTH=1671,HEIGHT=941,PLAYER_SPEED=218,JUMP_DURATION=1.2;
 const keys=new Set();const images=new Map();let manifest=null;
-const state={s:0,jump:null,opened:{left:false,right:false},passed:new Set(),retries:0,running:true,started:false,startTime:0,elapsed:0,lastTime:0,modalValve:null,toast:'',toastUntil:0,playerStatus:'idle',lastInput:'right',cameraAttempt:0,stream:null,handModel:null,handSeq:new ValveGestureSequence(),lastVideoTime:-1,lastHandAt:0,handCameraActive:false,keydownSimAt:null,simHeld:false,valveModes:{},muted:false};
+const state={s:0,jump:null,opened:{left:false,right:false},passed:new Set(),retries:0,running:true,started:false,startTime:0,elapsed:0,lastTime:0,modalValve:null,toast:'',toastUntil:0,playerStatus:'idle',lastInput:'right',cameraAttempt:0,stream:null,handModel:null,handSeq:new ValveGestureSequence(),lastVideoTime:-1,lastHandAt:0,handCameraActive:false,keydownSimAt:null,simHeld:false,valveModes:{},muted:false,crawlClock:0,hurtTimer:0};
 let audio;const worldLayer=document.createElement('canvas');worldLayer.width=WIDTH;worldLayer.height=HEIGHT;const worldCtx=worldLayer.getContext('2d');
 const MP_VERSION='0.10.14';
 const MP_ROOT=`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
@@ -17,11 +17,12 @@ function setPrompt(title,detail){$('prompt-title').textContent=title;$('prompt-d
 async function preload(){
  try{
   const res=await fetch('assets/manifest.json');if(!res.ok)throw new Error('manifest.json 无法读取');manifest=await res.json();
-  const names=['background/room_01_background_no_gameplay_components.png',...manifest.sprites.map(s=>s.file),...['right','left','up','jump'].map(n=>'thief/'+n+'.png')];
+  const names=['background/room_01_background_no_gameplay_components.png',...manifest.sprites.map(s=>s.file),...['right','left','up','jump'].map(n=>'thief/'+n+'.png'),'overlays/pipe_repairs_ladders.png','overlays/pipe_foreground_braces.png'];
   await Promise.all([...new Set(names)].map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{images.set(name,img);resolve();};img.onerror=()=>reject(Error(name+' 加载失败'));img.src='assets/'+name;})));
   const background=images.get('background/room_01_background_no_gameplay_components.png');
   worldCtx.drawImage(background,0,0,WIDTH,HEIGHT);
   for(const sprite of manifest.sprites){const img=images.get(sprite.file);if(img)worldCtx.drawImage(img,sprite.original_x,sprite.original_y,sprite.width,sprite.height);}
+  worldCtx.drawImage(images.get('overlays/pipe_repairs_ladders.png'),0,0,WIDTH,HEIGHT);
   toast('地图素材加载完成 · 左下入口出发');
  }catch(err){setPrompt('素材加载失败','请通过 npm start 启动，不要双击打开 HTML · '+err.message);console.error(err);}
 }
@@ -35,14 +36,14 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='Enter')state.simHeld=false;});
 window.addEventListener('blur',()=>{keys.clear();state.simHeld=false;});
 document.querySelectorAll('[data-key]').forEach(el=>{const k=el.dataset.key;el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);pointerInput(k,true);});for(const type of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(type,()=>pointerInput(k,false));});
-function restart(){state.s=0;state.jump=null;state.opened={left:false,right:false};state.passed=new Set();state.retries=0;state.running=true;state.started=false;state.elapsed=0;state.playerStatus='idle';state.valveModes={};$('result').hidden=true;toast('重新开始：沿下水管道潜入！');updateHUD();}
+function restart(){state.s=0;state.jump=null;state.opened={left:false,right:false};state.passed=new Set();state.retries=0;state.running=true;state.started=false;state.elapsed=0;state.playerStatus='idle';state.crawlClock=0;state.hurtTimer=0;state.valveModes={};$('result').hidden=true;toast('重新开始：沿下水管道潜入！');updateHUD();}
 function startJump(){if(!state.running||state.modalValve||state.jump!==null)return;const seg=playerSegment();if(!['left','right'].includes(seg.forward))return;state.jump=0;state.playerStatus='jump';sound(560,.10,'triangle');}
 function failSteam(h){
  state.retries++;sound(125,.35,'sawtooth');
  const seg=SEGMENTS.find(s=>s.id===h.segment);
  // Checkpoint immediately before the same steam trap, so retry remains fair.
  state.s=Math.max(seg.start+8,h.center-h.halfWidth-105);
- state.jump=null;state.playerStatus='hurt';toast('被持续喷气烫到了！回到断管前的安全位置重试。');
+ state.jump=null;state.hurtTimer=.85;state.playerStatus='hurt';toast('断口危险！必须等喷气 OFF 再跳跃，碰到喷气或跌入断口都会重试。');
 }
 function openNearbyValve(){
  if(state.modalValve||!state.running)return;
@@ -76,14 +77,18 @@ function statusHint(now){
  const seg=playerSegment(),s=state.s;
  const locked=VALVES.find(v=>!state.opened[v.id]&&v.at-s<126&&v.at-s>=-15);
  if(locked){setPrompt('🔒 '+locked.name,'到达阀门后按 E → 握拳并旋转手腕，或在弹窗中用 Enter 模拟测试');return;}
- const h=HAZARDS.find(h=>Math.abs(h.center-s)<190&&!state.passed.has(h.id));
- if(h){setPrompt('♨ 持续喷气！','在橙色断口前按 SPACE 起跳；不要直接爬过去。');return;}
+ const h=HAZARDS.find(h=>Math.abs(h.center-s)<200&&!state.passed.has(h.id));
+ if(h){
+  const vent=steamState(h,state.elapsed),left=vent.remaining.toFixed(1);
+  setPrompt(vent.active?'♨ 喷气中 / WAIT '+left+'s':'✓ 停喷窗口 / JUMP '+left+'s',vent.active?'热气喷出时绝对不能通过！站在断口前等待倒计时。':'喷气暂停！现在按 SPACE 跳过断口，直接爬行会掉下去。');
+  return;
+ }
  if(seg.id==='bottom'&&seg.t>.89){setPrompt('↑ 找到梯子','到达底层管道最右端，按 ↑ 或 W 沿梯子攀爬。');return;}
  if(seg.id==='ladder'){setPrompt('↑ 攀爬中','保持 ↑ 或 W，沿管道内的梯子爬上中层。');return;}
  if(seg.id==='middle'&&seg.t>.91){setPrompt('↑ 沿左侧弯管上升','到达中层左端后按 ↑ 或 W，沿竖直管道爬到顶层。');return;}
- if(seg.id==='left-rise'){setPrompt('↑ 上升管道','保持 ↑ 或 W；只能在这段管道里移动。');return;}
+ if(seg.id==='left-rise'){setPrompt('↑ 左侧竖梯','保持 ↑ 或 W；小偷沿新增梯子逐级攀爬。');return;}
  if(seg.id==='top'&&seg.t>.94){setPrompt('↓ 右侧出口方向','到达顶层最右端，按 ↓ 或 S 沿右侧管道下降。');return;}
- if(seg.id==='right-down'){setPrompt('↓ 即将抵达出口','继续向下，进入右下角的绿色排风口。');return;}
+ if(seg.id==='right-down'){setPrompt('↓ 出口竖梯','沿新增的右侧竖梯向下，进入绿色排风口。');return;}
  setPrompt('沿管道继续潜入','方向键 / WASD 移动 · Space 跳断口 · E 开阀门');
 }
 function updateHUD(){
@@ -104,38 +109,68 @@ function finishLevel(){
 }
 function updateGame(dt,now){
  if(!state.running||state.modalValve)return;
+ if(state.started)state.elapsed+=dt;
+ // A failed attempt has a short knock-back animation/cooldown; avoids dozens of
+ // repeated hits when the player is still holding the arrow key.
+ if(state.hurtTimer>0){
+  state.hurtTimer=Math.max(0,state.hurtTimer-dt);
+  state.playerStatus='hurt';statusHint(now);updateHUD();return;
+ }
  const dir=keyDirection(keys);
  const motion=movementForKey(state.s,dir);
- const velocity=motion.delta*PLAYER_SPEED*dt;
+ const inGap=hazardAt(state.s);
+ // The vent can resume while somebody is above a break. No camping inside it.
+ if(inGap&&!safeFromSteam(state.s,state.jump??-1,state.elapsed)){
+  failSteam(inGap);statusHint(now);updateHUD();return;
+ }
  if(motion.delta!==0){
   if(!state.started){state.started=true;state.startTime=now;}
+  // CRAWL: pull ~60% of the stroke, pause/plant hands ~40%.
+  // JUMP: continuous horizontal travel, so the character can clear a gap.
+  const climbing=['up','down'].includes(motion.segment?.forward);
+  const rate=state.jump!==null?1.05:crawlRate(state.crawlClock)*(climbing?.83:1);
+  state.crawlClock+=dt;
+  const velocity=motion.delta*PLAYER_SPEED*rate*dt;
   let target=motion.delta>0?Math.min(motion.limit,state.s+velocity):Math.max(motion.limit,state.s+velocity);
   const gate=clampAtLockedValve(state.s,target,state.opened);target=gate.s;
-  if(gate.blocked){if(state.toastUntil<now)toast('🔒 阀门关闭！按 E 打开开闸面板。');}
+  if(gate.blocked&&state.toastUntil<now)toast('🔒 阀门关闭！按 E 打开开闸面板。');
   const prev=state.s;state.s=target;
-  if(!(['up','down'].includes(motion.segment?.forward)))state.lastInput=dir;
+  if(!climbing)state.lastInput=dir;
   const hazard=hazardAt(state.s);
-  if(hazard){const height=state.jump===null?0:jumpHeight(state.jump,JUMP_DURATION);if(height<=17){failSteam(hazard);return;}}
-  for(const h of HAZARDS){if(prev<h.center+h.halfWidth+24 && state.s>=h.center+h.halfWidth+24)state.passed.add(h.id);}
+  if(hazard&&!safeFromSteam(state.s,state.jump??-1,state.elapsed)){
+   failSteam(hazard);statusHint(now);updateHUD();return;
+  }
+  for(const h of HAZARDS){
+   if(prev<h.center+h.halfWidth+24&&state.s>=h.center+h.halfWidth+24)state.passed.add(h.id);
+  }
   state.playerStatus=state.jump!==null?'jump':'move';
  }else state.playerStatus=state.jump!==null?'jump':'idle';
  if(state.jump!==null){state.jump+=dt;if(state.jump>=JUMP_DURATION)state.jump=null;}
- if(state.started)state.elapsed+=dt;
- if(state.s>=TOTAL_LENGTH-2 && Object.values(state.opened).every(Boolean))finishLevel();
+ if(state.s>=TOTAL_LENGTH-2&&Object.values(state.opened).every(Boolean))finishLevel();
  statusHint(now);updateHUD();
 }
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
 function drawWorld(now){
  ctx.clearRect(0,0,WIDTH,HEIGHT);
- if(manifest)ctx.drawImage(worldLayer,0,0);else{ctx.fillStyle='#11344a';ctx.fillRect(0,0,WIDTH,HEIGHT);}
+ if(manifest)ctx.drawImage(worldLayer,0,0);
+ else {ctx.fillStyle='#11344a';ctx.fillRect(0,0,WIDTH,HEIGHT);}
  const seconds=now/1000;
  for(const h of HAZARDS){
-  const p=routeAt(h.center);drawSteam(p.x,p.y,seconds,h);
-  if(!state.passed.has(h.id)){const launch=routeAt(h.center-131);ctx.save();ctx.fillStyle='#2b2632dd';ctx.strokeStyle='#f6c184';ctx.lineWidth=2;roundRect(launch.x-37,launch.y-88,74,29,6);ctx.fill();ctx.stroke();ctx.font='bold 15px monospace';ctx.textAlign='center';ctx.fillStyle='#ffe6b9';ctx.fillText('SPACE ↗',launch.x,launch.y-69);ctx.restore();}
+  const p=routeAt(h.center),vent=steamState(h,state.elapsed);
+  drawSteam(p.x,p.y,seconds,h,vent);
+  if(!state.passed.has(h.id)){
+   const launch=routeAt(h.center-123);
+   ctx.save();ctx.fillStyle=vent.active?'#39281de8':'#103c35e6';
+   ctx.strokeStyle=vent.active?'#f6b47c':'#70edba';ctx.lineWidth=2;
+   roundRect(launch.x-49,launch.y-101,98,33,7);ctx.fill();ctx.stroke();
+   ctx.font='bold 16px monospace';ctx.textAlign='center';
+   ctx.fillStyle=vent.active?'#ffe0b4':'#b5ffdb';
+   ctx.fillText(vent.active?'WAIT':'SPACE ↗',launch.x,launch.y-80);ctx.restore();
+  }
+  drawVentStatus(p.x,p.y,vent);
  }
  for(const valve of VALVES){
-  const x=valve.position[0]+(valve.id==='left'?0:0),y=valve.position[1];
-  const unlocked=state.opened[valve.id];
+  const x=valve.position[0],y=valve.position[1],unlocked=state.opened[valve.id];
   ctx.save();ctx.strokeStyle=unlocked?'#6cf1c3':'#ffbb75';ctx.globalAlpha=unlocked?.55:.65+.25*Math.sin(seconds*3.7);
   ctx.lineWidth=4;ctx.shadowColor=unlocked?'#6ef9cf':'#ed9247';ctx.shadowBlur=20;
   ctx.beginPath();ctx.ellipse(x,y,valve.id==='left'?69:61,64,0,0,Math.PI*2);ctx.stroke();ctx.restore();
@@ -143,15 +178,34 @@ function drawWorld(now){
   ctx.fillText(unlocked?'✓ OPEN':'◈ LOCKED',x,y-82);ctx.restore();
  }
  drawPlayer(now);
- // Clear arrow & vent markers, in addition to their original art.
- drawPin(123,812,'START','#9dddc5',seconds);drawPin(1538,790,'EXIT','#a4fbb8',seconds);
- if(state.toastUntil>now){ctx.save();ctx.textAlign='center';ctx.font='bold 18px system-ui';roundRect(340,62,991,47,12);ctx.fillStyle='#102738e5';ctx.fill();ctx.fillStyle='#fff1ca';ctx.fillText(state.toast,835,92);ctx.restore();}
+ // Second pass: orange coupling rings and metal lips sit IN FRONT of the thief.
+ // Never redraw the full opaque pipe textures here: that would hide him entirely.
+ const foreground=images.get('overlays/pipe_foreground_braces.png');
+ if(foreground)ctx.drawImage(foreground,0,0,WIDTH,HEIGHT);
+ drawPin(123,812,'START','#9dddc5',seconds);
+ drawPin(1538,790,'EXIT','#a4fbb8',seconds);
+ if(state.toastUntil>now){ctx.save();ctx.textAlign='center';ctx.font='bold 18px system-ui';
+  roundRect(245,62,1180,47,12);ctx.fillStyle='#102738e5';ctx.fill();
+  ctx.fillStyle='#fff1ca';ctx.fillText(state.toast,835,92);ctx.restore();}
+}
+function drawVentStatus(x,y,vent){
+ ctx.save();ctx.textAlign='center';ctx.font='bold 14px monospace';
+ const label=vent.active?'♨ ON ':'✓ OFF ';const left=vent.remaining.toFixed(1)+'s';
+ ctx.fillStyle=vent.active?'#3a241be9':'#123e38e9';
+ ctx.strokeStyle=vent.active?'#e7a068':'#63dfb7';ctx.lineWidth=2;
+ roundRect(x-64,y-141,128,34,8);ctx.fill();ctx.stroke();
+ ctx.fillStyle=vent.active?'#ffdab1':'#bdffe3';ctx.fillText(label+left,x,y-119);ctx.restore();
 }
 function drawPin(x,y,text,color,t){
  ctx.save();ctx.shadowBlur=16;ctx.shadowColor=color;ctx.strokeStyle=color;ctx.fillStyle='#102532bb';ctx.lineWidth=2;
  const by=y-58+Math.sin(t*3)*3;roundRect(x-36,by-17,72,26,6);ctx.fill();ctx.stroke();ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillStyle=color;ctx.fillText(text,x,by+1);ctx.restore();
 }
-function drawSteam(x,y,t,h){
+function drawSteam(x,y,t,h,vent){
+ if(!vent.active){
+  ctx.save();ctx.strokeStyle='#73e8c0a6';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(x-12,y-10);ctx.lineTo(x+12,y-10);ctx.moveTo(x-9,y-1);ctx.lineTo(x+9,y-1);ctx.stroke();ctx.restore();
+  return;
+ }
  ctx.save();ctx.globalCompositeOperation='screen';
  const n=1+.10*Math.sin(t*5+h.center*.01);
  const grd=ctx.createRadialGradient(x,y-5,7,x,y-18,68);
@@ -166,16 +220,30 @@ function drawSteam(x,y,t,h){
  ctx.restore();
 }
 function drawPlayer(now){
- const seg=playerSegment();const hopping=state.jump!==null;
+ const seg=playerSegment(),hopping=state.jump!==null;
  const height=hopping?jumpHeight(state.jump,JUMP_DURATION):0;
  const vertical=['ladder','left-rise','right-down'].includes(seg.id);
  const which=hopping?'jump':vertical?'up':seg.id==='middle'?'left':'right';
  const im=images.get('thief/'+which+'.png');if(!im)return;
  const x=seg.x,y=seg.y-height;
  ctx.save();ctx.imageSmoothingEnabled=false;
- // Tiny ground shadow shows the character's actual pipe centerline.
- ctx.fillStyle='#04121c92';ctx.beginPath();ctx.ellipse(x,seg.y+26,42,7,0,0,Math.PI*2);ctx.fill();
- if(vertical){const h=71,w=h*im.width/im.height;ctx.drawImage(im,x-w/2,y-h/2,w,h);}else if(hopping){const h=76,w=h*im.width/im.height;ctx.drawImage(im,x-w/2,y-h/2,w,h);}else{const w=111,h=w*im.height/im.width;const bob=state.playerStatus==='move'?Math.sin(now/80)*2:0;ctx.drawImage(im,x-w/2,y-h/2+bob,w,h);}
+ // Stance is a tiny bit farther into the tube; brass rings cover the overlap.
+ ctx.fillStyle='#04121c58';ctx.beginPath();ctx.ellipse(x,seg.y+21,38,6,0,0,Math.PI*2);ctx.fill();
+ const cycle=(state.crawlClock/.36)%1;
+ const pulling=state.playerStatus==='move'&&cycle<.59;
+ const shift=pulling?Math.sin((cycle/.59)*Math.PI)*2.2:0;
+ if(vertical){
+  const h=72,w=h*im.width/im.height;
+  const stretch=pulling?1.025:1;
+  ctx.drawImage(im,x-w/2,y-h*stretch/2+shift*.4,w,h*stretch);
+ }else if(hopping){
+  const h=75,w=h*im.width/im.height;
+  ctx.drawImage(im,x-w/2,y-h/2,w,h);
+ }else{
+  const w=pulling?109:106,h=w*im.height/im.width;
+  // On the rest beat the character visibly settles, rather than gliding.
+  ctx.drawImage(im,x-w/2,y-h/2+shift,w,h);
+ }
  ctx.restore();
 }
 function frame(now){

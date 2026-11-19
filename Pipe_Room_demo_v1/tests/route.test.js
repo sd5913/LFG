@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SEGMENTS,HAZARDS,VALVES,TOTAL_LENGTH,routeAt,movementForKey,clampAtLockedValve,hazardAt,jumpHeight} from '../src/route.js';
+import {SEGMENTS,HAZARDS,VALVES,TOTAL_LENGTH,routeAt,movementForKey,clampAtLockedValve,hazardAt,jumpHeight,steamState,safeFromSteam,crawlRate,CRAWL_STROKE_SECONDS} from '../src/route.js';
 import {ValveGestureSequence,fistScore,palmRotation} from '../src/gesture-valve.js';
 test('pipe pieces form six and only six constrained path segments',()=>assert.equal(SEGMENTS.length,6));
 test('path starts at left lower inlet',()=>assert.deepEqual([routeAt(0).x,routeAt(0).y],[121,826]));
@@ -15,7 +15,11 @@ test('player can climb with Up',()=>assert.equal(movementForKey(SEGMENTS[1].star
 test('player can reverse at junction back onto previous segment',()=>assert.equal(movementForKey(SEGMENTS[1].start,'left').delta,-1));
 test('player cannot walk upward through bottom horizontal tube',()=>assert.equal(movementForKey(200,'up').delta,0));
 test('hazard only inside steam collision zone',()=>{const h=HAZARDS[0];assert.equal(hazardAt(h.center)?.id,h.id);assert.equal(hazardAt(h.center-110),null);});
-test('jump is an arc returning to zero',()=>{assert.equal(jumpHeight(-1),0);assert.ok(jumpHeight(.47)>60);assert.equal(jumpHeight(1),0);});
+test('jump is an arc lasting 1.2 seconds',()=>{assert.equal(jumpHeight(-1),0);assert.ok(jumpHeight(.6)>69);assert.equal(jumpHeight(1.2),0);});
+test('steam alternates between ON and OFF, including a countdown',()=>{const h=HAZARDS[0];assert.equal(steamState(h,0).active,true);assert.equal(steamState(h,4.1).active,false);assert.ok(steamState(h,4.1).remaining>2);assert.equal(steamState(h,7).active,true);});
+test('ON steam blocks airborne player, OFF steam still requires jump',()=>{const h=HAZARDS[0];assert.equal(safeFromSteam(h.center,.6,0),false);assert.equal(safeFromSteam(h.center,-1,4.15),false);assert.equal(safeFromSteam(h.center,.6,4.15),true);});
+test('crawl strokes include a push and near-stationary rest',()=>{assert.ok(crawlRate(.06)>1.3);assert.ok(crawlRate(.33)<.15);assert.equal(CRAWL_STROKE_SECONDS,.36);});
+test('both additional ladders align with the climb-only route segments',()=>{assert.equal(SEGMENTS[3].from[0],211);assert.equal(SEGMENTS[3].to[0],211);assert.equal(SEGMENTS[5].from[0],1538);assert.equal(SEGMENTS[5].to[0],1538);assert.equal(movementForKey(SEGMENTS[5].start+50,'down').delta,1);assert.equal(movementForKey(SEGMENTS[5].start+50,'right').delta,0);});
 test('empty hand is not a fist',()=>assert.equal(fistScore(null).fist,false));
 test('rotating invalid landmark array returns null',()=>assert.equal(palmRotation([]),null));
 test('valve cannot unlock on first frame',()=>{const x=new ValveGestureSequence();assert.equal(x.update(null,1000).done,false);});
