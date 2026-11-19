@@ -1,0 +1,305 @@
+{
+  "canvas": {
+    "width": 1672,
+    "height": 941
+  },
+  "static_background": "backgrounds/ui_static_shell.png",
+  "initial_uniform_preview": "backgrounds/ui_initial_uniform_preview.png",
+  "camera_video_crop": {
+    "x": 97,
+    "y": 323,
+    "width": 275,
+    "height": 277,
+    "mirror": true
+  },
+  "right_instruction_crop": {
+    "x": 1284,
+    "y": 319,
+    "width": 291,
+    "height": 300
+  },
+  "top_step_origins": [
+    {
+      "x": 348,
+      "y": 24
+    },
+    {
+      "x": 640,
+      "y": 24
+    },
+    {
+      "x": 924,
+      "y": 24
+    },
+    {
+      "x": 1185,
+      "y": 24
+    }
+  ],
+  "selection_frame_offset": {
+    "x": -5,
+    "y": -6
+  },
+  "completed_check_offset": {
+    "x": 96,
+    "y": 88
+  },
+  "bottom_token_origins": [
+    {
+      "x": 347,
+      "y": 781
+    },
+    {
+      "x": 635,
+      "y": 781
+    },
+    {
+      "x": 924,
+      "y": 781
+    },
+    {
+      "x": 1213,
+      "y": 781
+    }
+  ],
+  "dial_rotor_pivot_local": {
+    "x": 288,
+    "y": 292
+  },
+  "assets": [
+    {
+      "file": "gestures/gesture_step_01_index_idle.png",
+      "x": 348,
+      "y": 24,
+      "width": 153,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "idle"
+    },
+    {
+      "file": "gestures/gesture_step_01_index_selected.png",
+      "x": 343,
+      "y": 18,
+      "width": 158,
+      "height": 162,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "selected"
+    },
+    {
+      "file": "gestures/gesture_step_01_index_completed.png",
+      "x": 348,
+      "y": 24,
+      "width": 153,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "completed"
+    },
+    {
+      "file": "gestures/gesture_step_02_pinch_idle.png",
+      "x": 640,
+      "y": 24,
+      "width": 147,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "idle"
+    },
+    {
+      "file": "gestures/gesture_step_02_pinch_selected.png",
+      "x": 635,
+      "y": 18,
+      "width": 158,
+      "height": 162,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "selected"
+    },
+    {
+      "file": "gestures/gesture_step_02_pinch_completed.png",
+      "x": 640,
+      "y": 24,
+      "width": 147,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "completed"
+    },
+    {
+      "file": "gestures/gesture_step_03_fist_idle.png",
+      "x": 924,
+      "y": 24,
+      "width": 145,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "idle"
+    },
+    {
+      "file": "gestures/gesture_step_03_fist_selected.png",
+      "x": 919,
+      "y": 18,
+      "width": 158,
+      "height": 162,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "selected"
+    },
+    {
+      "file": "gestures/gesture_step_03_fist_completed.png",
+      "x": 924,
+      "y": 24,
+      "width": 145,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "completed"
+    },
+    {
+      "file": "gestures/gesture_step_04_side_fist_idle.png",
+      "x": 1185,
+      "y": 24,
+      "width": 146,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "idle"
+    },
+    {
+      "file": "gestures/gesture_step_04_side_fist_selected.png",
+      "x": 1180,
+      "y": 18,
+      "width": 158,
+      "height": 162,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "selected"
+    },
+    {
+      "file": "gestures/gesture_step_04_side_fist_completed.png",
+      "x": 1185,
+      "y": 24,
+      "width": 146,
+      "height": 143,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "completed"
+    },
+    {
+      "file": "gestures/gesture_step_02_pinch_selected_reference.png",
+      "x": 634,
+      "y": 12,
+      "width": 158,
+      "height": 162,
+      "alpha": true,
+      "layer": "top-progress",
+      "state": "selected-reference"
+    },
+    {
+      "file": "dial/dial_rotor.png",
+      "x": 551,
+      "y": 179,
+      "width": 576,
+      "height": 576,
+      "alpha": true,
+      "layer": "dial",
+      "transform": "rotate around centre"
+    },
+    {
+      "file": "dial/dial_hub_keyhole.png",
+      "x": 738,
+      "y": 391,
+      "width": 199,
+      "height": 201,
+      "alpha": true,
+      "layer": "dial-fixed"
+    },
+    {
+      "file": "dial/dial_pointer.png",
+      "x": 793,
+      "y": 174,
+      "width": 88,
+      "height": 75,
+      "alpha": true,
+      "layer": "dial-fixed"
+    },
+    {
+      "file": "feedback/live_pinch_detection_overlay.png",
+      "x": 96,
+      "y": 320,
+      "width": 287,
+      "height": 303,
+      "alpha": true,
+      "layer": "camera-overlay",
+      "state": "recognized"
+    },
+    {
+      "file": "feedback/recognition_check_green.png",
+      "x": 434,
+      "y": 102,
+      "width": 77,
+      "height": 70,
+      "alpha": true,
+      "layer": "camera-overlay",
+      "state": "success"
+    },
+    {
+      "file": "feedback/target_pinch_and_rotate.png",
+      "x": 1306,
+      "y": 337,
+      "width": 269,
+      "height": 255,
+      "alpha": true,
+      "layer": "instruction",
+      "state": "pinch-turn"
+    },
+    {
+      "file": "feedback/rotation_arrow_clockwise.png",
+      "x": 1425,
+      "y": 338,
+      "width": 160,
+      "height": 254,
+      "alpha": true,
+      "layer": "instruction",
+      "state": "turn"
+    },
+    {
+      "file": "progress/progress_token_idle.png",
+      "x": 347,
+      "y": 781,
+      "width": 127,
+      "height": 123,
+      "alpha": true,
+      "layer": "bottom-progress",
+      "state": "idle"
+    },
+    {
+      "file": "progress/progress_token_selected.png",
+      "x": 635,
+      "y": 778,
+      "width": 160,
+      "height": 131,
+      "alpha": true,
+      "layer": "bottom-progress",
+      "state": "selected"
+    },
+    {
+      "file": "progress/progress_token_completed.png",
+      "x": 347,
+      "y": 781,
+      "width": 127,
+      "height": 123,
+      "alpha": true,
+      "layer": "bottom-progress",
+      "state": "completed"
+    }
+  ],
+  "notes": [
+    "Place the dial rotor at its recorded origin and rotate it around its centre.",
+    "Keep dial_hub_keyhole and dial_pointer fixed above the rotor.",
+    "Use only one selected frame and one bottom selected token at a time.",
+    "The live player hand belongs in the camera_video_crop area; overlay recognition feedback above it."
+  ]
+}
