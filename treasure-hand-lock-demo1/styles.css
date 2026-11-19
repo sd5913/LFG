@@ -55,22 +55,19 @@ button { font: inherit; }
 .unlock-message.success { color: #89ffc0; text-shadow: 0 0 12px #47e992; }
 .sensor-video { position: fixed; right: -2px; bottom: -2px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .privacy-note { margin: clamp(8px, 1vw, 14px) 0 0; color: #90aab8; font-size: 11px; text-align: center; }
-.success-sequence { position: absolute; z-index: 6; left: 37%; top: 31%; width: 26%; height: 40%; pointer-events: none; opacity: 0; }
-.opened-chest { position: absolute; inset: 0; perspective: 500px; filter: drop-shadow(0 0 18px #f7a83c); }
-.chest-body, .chest-lid { position: absolute; left: 8%; width: 84%; border: 10px solid #ffc24e; outline: 5px solid #3b1725; background: repeating-linear-gradient(90deg, #8e1829 0 18%, #bd2b39 18% 36%); box-shadow: inset 0 9px #ffdc77, inset 0 -12px #6d1729; }
-.chest-body { top: 48%; height: 42%; }
-.chest-lid { z-index: 2; top: 29%; height: 25%; transform-origin: center bottom; }
-.chest-keyhole { position: absolute; left: 45%; top: 24%; width: 10%; height: 42%; background: #183044; border: 5px solid #ffda75; }
-.chest-light { position: absolute; left: 18%; top: 35%; width: 64%; height: 40%; background: #ffe28a; filter: blur(12px); opacity: 0; }
+.success-sequence { position: absolute; z-index: 6; left: 25%; top: 20%; width: 50%; height: 42%; pointer-events: none; opacity: 0; perspective: 700px; }
+.chest-opening { position: absolute; left: 4%; top: 30%; width: 92%; height: 60%; overflow: hidden; border: 10px solid #fbc45d; outline: 6px solid #2d1020; background: linear-gradient(#270a1c, #6e1727 68%, #a92536); box-shadow: inset 0 0 22px #09070d, 0 0 18px #f8ad3b; }
+.chest-light { position: absolute; left: 10%; bottom: -45%; width: 80%; height: 125%; background: radial-gradient(ellipse at bottom, #fff7bb 0, #ffe171 22%, #f9a73488 56%, transparent 75%); opacity: 0; }
+.chest-lid { position: absolute; z-index: 2; left: 0; top: 8%; width: 100%; height: 42%; border: 11px solid #ffc65c; outline: 6px solid #30111f; background: repeating-linear-gradient(90deg, #9e2032 0 24%, #c83542 24% 48%); box-shadow: inset 0 10px #ffe18b, inset 0 -14px #681524; transform-origin: center top; }
 .unlock-success .dial-rotor { animation: success-spin 1s steps(12, end) both; filter: drop-shadow(0 0 20px #ffd65a); }
-.unlock-success .dial-hub { animation: success-hub 1.1s steps(6, end) both; }
-.unlock-success .success-sequence { animation: chest-appear .3s steps(2, end) 1s both; }
-.unlock-success .chest-lid { animation: chest-open .7s steps(7, end) 1.25s both; }
-.unlock-success .chest-light { animation: chest-glow .8s steps(6, end) 1.4s both; }
+.unlock-success .dial { animation: dial-vanish .16s steps(2, end) 1s both; }
+.unlock-success .success-sequence { animation: chest-appear .01s steps(1, end) 1.16s both; }
+.unlock-success .chest-lid { animation: chest-open .75s steps(8, end) 1.25s both; }
+.unlock-success .chest-light { animation: chest-glow .8s steps(6, end) 1.38s both; }
 @keyframes success-spin { to { transform: rotate(360deg); } }
-@keyframes success-hub { 60% { filter: brightness(2.5) drop-shadow(0 0 24px #ffcf4b); } 100% { filter: brightness(1.4); } }
+@keyframes dial-vanish { to { opacity: 0; transform: scale(.78); } }
 @keyframes chest-appear { to { opacity: 1; } }
-@keyframes chest-open { to { transform: rotateX(-115deg); } }
-@keyframes chest-glow { 30% { opacity: .95; } 100% { opacity: .5; } }
-@media (prefers-reduced-motion: reduce) { .unlock-success .dial-rotor, .unlock-success .dial-hub { animation: none; } .unlock-success .success-sequence { animation: chest-appear .01ms both; } .unlock-success .chest-lid { animation: chest-open .01ms both; } }
+@keyframes chest-open { to { transform: translateY(-20%) rotateX(125deg); } }
+@keyframes chest-glow { 25% { opacity: 1; } 100% { opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .unlock-success .dial { animation: dial-vanish .01ms both; } .unlock-success .dial-rotor { animation: none; } .unlock-success .success-sequence { animation: chest-appear .01ms both; } .unlock-success .chest-lid { animation: chest-open .01ms both; } }
 @media (max-width: 720px) { .unlock-app { align-items: start; padding-top: 4vh; } .unlock-stage { width: 1671px; max-width: none; transform-origin: top left; transform: scale(calc((100vw - 24px) / 1671)); margin-bottom: calc((100vw - 24px) * -0.563); } .privacy-note { font-size: 9px; } }
