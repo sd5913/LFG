@@ -5,6 +5,7 @@ import Room1 from './game/Room1.js';
 import { GAME } from './game/config.js';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import { TreasureUnlock } from './treasure-unlock.jsx';
+import { StreetEscape } from './street-escape.jsx';
 import './styles.css';
 
 function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatus, cameraError, onToggleCamera }) {
@@ -95,6 +96,7 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
 function App() {
   const [activeExhibitId, setActiveExhibitId] = useState(null);
   const [treasureUnlockActive, setTreasureUnlockActive] = useState(false);
+  const [streetEscapeActive, setStreetEscapeActive] = useState(() => new URLSearchParams(window.location.search).get('stage') === 'escape');
   const [gameOver, setGameOver] = useState(false);
   const [resumeState, setResumeState] = useState(null);
   const cameraStreamRef = useRef(null);
@@ -141,6 +143,8 @@ function App() {
     <section className="game-over-panel" role="alert"><span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button></section>
   </section></main>;
 
+  if (streetEscapeActive) return <StreetEscape alertLevel={resumeState?.alertLevel ?? 0} onExit={() => setStreetEscapeActive(false)} />;
+
   if (activeExhibitId) return <PoseShadowDemo
     exhibitId={activeExhibitId}
     cameraStream={cameraStreamRef.current}
@@ -163,6 +167,7 @@ function App() {
     onComplete={() => {
       setResumeState((previous) => previous ? { ...previous, treasureUnlocked: true } : previous);
       setTreasureUnlockActive(false);
+      setStreetEscapeActive(true);
     }}
   />;
 
