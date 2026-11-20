@@ -1,0 +1,14 @@
+{
+  "format": "separate transparent UI components",
+  "components": {
+    "background": "scene-background.svg",
+    "characters": ["police.png", "thief.png"],
+    "portraitFrame": "portrait-frame.svg",
+    "countdownBadge": "countdown-badge.svg",
+    "versusBadge": "vs.svg",
+    "gesturePanel": "gesture-panel-frame.svg",
+    "gestureIcons": ["rock.svg", "paper.svg", "scissors.svg"],
+    "scanPanel": "scan-panel-frame.svg"
+  },
+  "notes": "PNG characters have transparent alpha. SVG UI components have transparent outside areas."
+}
