@@ -2,7 +2,16 @@
 
 .room{background:url('assets/scene-background.svg') center/100% 100% no-repeat;opacity:.65}.room i{display:none}
 .portrait{position:relative;border:0;clip-path:none}.portrait::after{content:'';position:absolute;inset:0;background:url('assets/portrait-frame.svg') center/100% 100% no-repeat;pointer-events:none}
-.gesture-panel{border:0;background:#0a213e url('assets/gesture-panel-frame.svg') center/100% 100% no-repeat}.scan-panel{border:0;background:#072d42 url('assets/scan-panel-frame.svg') center/100% 100% no-repeat}
+.gesture-panel,
+.scan-panel {
+  border: 0;
+  background: url('assets/rps-panel-frame.png') center / 105% 124% no-repeat;
+  box-shadow: none;
+  clip-path: none;
+  padding: 16px clamp(16px, 2.4vw, 32px);
+}
+.gesture-panel { display: grid; align-items: center; }
+.scan-head { justify-content: flex-end; }
 
 .count{font-size:30px;white-space:nowrap;border:0;border-radius:0;background:#10284b url('assets/countdown-badge.svg') center/100% 100% no-repeat;box-shadow:none}
 .scoreboard{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 12px;padding:7px 14px;border:3px solid #bd9758;background:#10243e;color:#f8d786;font-weight:900}
@@ -12,3 +21,98 @@
 #round-marks b.lose{border-color:#de7c82;color:#ffb0aa}
 #round-marks b.tie{border-color:#e4c377;color:#ffe295}
 @media(max-width:700px){.scoreboard{font-size:11px;padding:5px}#round-marks b{width:24px;height:24px}}
+
+/* Keep the camera running for recognition but render only its landmark skeleton. */
+.preview{background:repeating-linear-gradient(0deg,#06334a 0 2px,transparent 2px 30px),repeating-linear-gradient(90deg,#06334a 0 2px,transparent 2px 30px),#061b2d}
+.preview video{opacity:0}
+.preview canvas{z-index:1}
+.camera-cover{z-index:2}
+.choice{min-height:94px;display:grid;place-items:center}
+#police-choice img,#player-choice img{width:88px;height:88px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 3px #07101e)}
+.hands img{width:86px;height:106px;object-fit:contain}
+@media(max-width:700px){.hands img{width:54px;height:72px}}
+.hands>div.countdown-active{border-color:#ffdc68;background:#223b57;color:#ffe28e;box-shadow:0 0 0 2px #805a24,0 0 16px #ffcf5b88}
+.center{min-height:190px;display:grid;align-content:center;justify-items:center;background:transparent}
+.count.outcome-win{color:#aaffcf;border-color:#62e4a4}
+.count.outcome-lose{color:#ff8c87;border-color:#ed7880;box-shadow:0 0 0 5px #071321,0 0 25px #ed788088}
+.count.outcome-tie{color:#ffe28e}
+
+/* RPS showdown layout: supplied museum hall, custom portraits, and a central VS plaque. */
+.game{background:#071426 url('assets/rps-hall.png') center/cover no-repeat}
+.room{display:none}
+.arena{grid-template-columns:minmax(220px,1fr) 250px minmax(220px,1fr);min-height:348px;align-items:center}
+.portrait{height:270px;max-width:292px;box-shadow:none;overflow:visible}
+.portrait,.thief .portrait{background:transparent}
+.portrait::after{content:none}
+.portrait img{width:100%;height:100%;object-fit:contain}
+.center{position:relative;min-height:270px;align-content:center;gap:0}
+.vs{display:block;width:220px;height:auto;margin:-8px auto -4px;image-rendering:pixelated}
+.center p{margin:0;min-height:2em;text-shadow:0 2px 2px #06101e}
+@media(max-width:849px){
+  .arena{grid-template-columns:1fr 118px 1fr;min-height:235px}
+  .portrait{height:175px;max-width:180px}
+  .vs{width:112px}
+  .center{min-height:180px}
+}
+
+@media (max-width: 520px) {
+  .bottom { grid-template-columns: minmax(0, 1fr); }
+  .scan-head { gap: 8px; }
+}
+
+/* Scale the 16:9 composition together in landscape windows. */
+@media (min-width: 850px) and (min-aspect-ratio: 4/3) {
+  .game {
+    --stage-unit: min(1vw, calc(100svh * 16 / 900));
+    container-type: inline-size;
+    width: calc(100 * var(--stage-unit));
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    display: grid;
+    grid-template-rows: calc(3.1 * var(--stage-unit)) calc(1.1 * var(--stage-unit)) minmax(0, 1fr)
+      calc(17.4 * var(--stage-unit)) calc(3.1 * var(--stage-unit));
+    gap: calc(.85 * var(--stage-unit));
+    padding: calc(1.2 * var(--stage-unit)) calc(3.2 * var(--stage-unit));
+    border: 0;
+    font-size: calc(1.05 * var(--stage-unit));
+  }
+
+  .scoreboard {
+    margin: 0;
+    padding: 0 1.3cqw;
+    font-size: 1.2cqw;
+  }
+
+  #round-marks { gap: .55cqw; }
+  #round-marks b { width: 1.85cqw; height: 1.85cqw; }
+  .eyebrow { font-size: .76cqw; }
+
+  .arena {
+    grid-template-columns: minmax(0, 1fr) 23cqw minmax(0, 1fr);
+    gap: 0;
+    min-height: 0;
+  }
+
+  .portrait { height: 17.6cqw; max-width: 21cqw; }
+  .fighter strong { margin: 0; padding: .15cqw 1.6cqw; }
+  .choice { min-height: 4.4cqw; }
+  #police-choice img, #player-choice img { width: 4.4cqw; height: 4.4cqw; }
+  .center { min-height: 0; }
+  .count { width: 6.2cqw; height: 6.2cqw; margin-bottom: .55cqw; font-size: 2.1cqw; }
+  .vs { width: 19cqw; margin: -.35cqw 0 0; }
+  .center p { font-size: .95cqw; }
+
+  .bottom { gap: 19cqw; margin: 0; }
+  .gesture-panel, .scan-panel { height: 100%; min-width: 0; padding: 1.25cqw 1.9cqw; }
+  .hands { align-items: center; gap: .45cqw; margin: 0; }
+  .hands > div { gap: .2cqw; padding: .35cqw; }
+  .hands img { width: 100%; height: 9.7cqw; }
+  .scan-head span, .scan-panel p { font-size: .9cqw; }
+  .preview { height: 11.7cqw; max-width: 25cqw; margin: .35cqw auto .15cqw; }
+  .camera-cover { font-size: 1cqw; }
+
+  footer { gap: 1cqw; }
+  .result { min-height: 100%; }
+  .buttons { gap: .5cqw; }
+  button { padding: .65cqw 1cqw; font-size: 1cqw; }
+}

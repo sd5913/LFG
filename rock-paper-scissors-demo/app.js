@@ -1,8 +1,9 @@
 const $ = id => document.getElementById(id);
 const names = {rock:'石头',paper:'布',scissors:'剪刀'};
 const beats = {rock:'scissors',paper:'rock',scissors:'paper'};
+const policeGestureArt = {rock:'assets/police-rock.png',paper:'assets/police-paper.png',scissors:'assets/police-scissors.png'};
 const edges = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
-const state = {mode:'idle',stream:null,model:null,lastVideo:-1,detected:null,stable:null,frames:0,selected:'paper',timer:null,raf:0,round:0,playerWins:0,policeWins:0,history:[]};
+const state = {mode:'idle',stream:null,model:null,lastVideo:-1,detected:null,stable:null,frames:0,selected:'paper',timer:null,gestureTimer:null,raf:0,round:0,playerWins:0,policeWins:0,history:[],countingDown:false,pendingPolice:null};
 const $video=$('camera'),$canvas=$('landmarks'),ctx=$canvas.getContext('2d');
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function classify(p){
@@ -14,7 +15,32 @@ function classify(p){
   return null;
 }
 function draw(points){ctx.clearRect(0,0,$canvas.width,$canvas.height);if(!points)return;ctx.strokeStyle='#5cf4e9';ctx.fillStyle='#ffd56c';ctx.lineWidth=3;for(const [a,b] of edges){ctx.beginPath();ctx.moveTo(points[a].x*$canvas.width,points[a].y*$canvas.height);ctx.lineTo(points[b].x*$canvas.width,points[b].y*$canvas.height);ctx.stroke()}for(const p of points)ctx.fillRect(p.x*$canvas.width-3,p.y*$canvas.height-3,6,6)}
-function showGesture(g){document.querySelectorAll('.hands>div').forEach(el=>el.classList.toggle('active',el.dataset.gesture===g));$('detected').textContent=g?`当前识别：${names[g]}`:'请将一只手放进扫描框'}
+function showGesture(g){
+  // The lower-left panel belongs only to the guard; the player's hand is shown in the scanner and under the thief portrait.
+  $('detected').textContent=g?`当前识别：${names[g]}`:'请将一只手放进扫描框';
+}
+function highlightCountdownGesture(gesture){
+  document.querySelectorAll('.hands>div').forEach(el=>el.classList.toggle('countdown-active',el.dataset.gesture===gesture));
+}
+function clearCountdownGesture(){document.querySelectorAll('.hands>div').forEach(el=>el.classList.remove('countdown-active'))}
+function showPoliceGesture(g){
+  const choice=$('police-choice');
+  choice.replaceChildren();
+  if(!g)return;
+  const image=document.createElement('img');
+  image.src=policeGestureArt[g];
+  image.alt=`保安出${names[g]}`;
+  choice.append(image);
+}
+function showPlayerGesture(g){
+  const choice=$('player-choice');
+  choice.replaceChildren();
+  if(!g)return;
+  const image=document.createElement('img');
+  image.src=policeGestureArt[g];
+  image.alt=`你出${names[g]}`;
+  choice.append(image);
+}
 function setResult(text,kind=''){$('result').textContent=text;$('result').className='result '+kind}
 async function loadCamera(){
   $('camera-status').textContent='加载识别中…';
@@ -32,26 +58,39 @@ function scan(){if(state.mode!=='camera')return;state.raf=requestAnimationFrame(
 function stopCamera(){cancelAnimationFrame(state.raf);state.stream?.getTracks().forEach(t=>t.stop());state.stream=null;$video.srcObject=null;state.model?.close?.();state.model=null;document.querySelector('.preview').classList.remove('ready');ctx.clearRect(0,0,$canvas.width,$canvas.height)}
 function renderScore(){
   $('round-label').textContent=`第 ${Math.min(state.round+1,3)} / 3 回合`;
-  $('score').textContent=`你 ${state.playerWins} : ${state.policeWins} 警官`;
+  $('score').textContent=`你 ${state.playerWins} : ${state.policeWins} 保安`;
   document.querySelectorAll('#round-marks b').forEach((el,i)=>{el.textContent=state.history[i]==='win'?'✓':state.history[i]==='lose'?'×':state.history[i]==='tie'?'—':i+1;el.className=state.history[i]||''});
 }
-function reveal(){
+function reveal(police=state.pendingPolice){
   const player=state.mode==='demo'?state.selected:state.stable;
-  if(!player){$('count').textContent='？';$('phase').textContent='没有识别到石头、剪刀或布';setResult('本回合未出拳，请再试一次','lose');$('retry').textContent='重试本回合';$('retry').hidden=false;return}
-  const police=['rock','paper','scissors'][Math.floor(Math.random()*3)];
-  $('police-choice').textContent=names[police];$('player-choice').textContent=names[player];$('count').textContent='出拳！';$('phase').textContent=`警官：${names[police]}　你：${names[player]}`;
+  if(!player){$('count').textContent='？';$('count').className='count outcome-lose';$('phase').textContent='没有识别到石头、剪刀或布';setResult('本回合未出拳，请再试一次','lose');$('retry').textContent='重试本回合';$('retry').hidden=false;return}
+  showPoliceGesture(police);showPlayerGesture(player);$('phase').textContent='';
   const outcome=police===player?'tie':beats[player]===police?'win':'lose';
+  $('count').textContent=outcome==='win'?'胜利！':outcome==='lose'?'失败！':'平局！';
+  $('count').className=`count outcome-${outcome}`;
   state.history.push(outcome);state.round++;if(outcome==='win')state.playerWins++;if(outcome==='lose')state.policeWins++;
   renderScore();
-  if(state.round<3){setResult(outcome==='win'?'本回合你赢了，继续下一回合':outcome==='lose'?'本回合警官赢了，继续下一回合':'本回合平局，继续下一回合',outcome==='tie'?'':outcome);$('retry').textContent='下一回合';$('retry').hidden=false;return}
+  if(state.round<3){setResult('');$('retry').textContent='下一回合';$('retry').hidden=false;return}
   stopCamera();state.mode='idle';$('round-label').textContent='三回合结束';
   if(state.playerWins>state.policeWins)setResult(`三回合你以 ${state.playerWins}:${state.policeWins} 获胜，成功逃脱！`,'win');
-  else if(state.playerWins<state.policeWins)setResult(`三回合警官以 ${state.policeWins}:${state.playerWins} 获胜，挑战失败`,'lose');
+  else if(state.playerWins<state.policeWins)setResult(`三回合保安以 ${state.policeWins}:${state.playerWins} 获胜，挑战失败`,'lose');
   else setResult(`三回合 ${state.playerWins}:${state.policeWins} 平局，请重新挑战`);
   $('retry').textContent='重新挑战';$('retry').hidden=false;
 }
-function countdown(){let n=3;$('retry').hidden=true;$('start').hidden=true;$('demo').hidden=true;$('police-choice').textContent='？';$('player-choice').textContent='？';$('count').textContent=n;$('phase').textContent=`第 ${state.round+1} 回合：倒数结束时锁定手势`;setResult('观察警官，准备猜拳');state.timer=setInterval(()=>{n--;if(n>0){$('count').textContent=n;$('count').classList.remove('tick');void $('count').offsetWidth;$('count').classList.add('tick')}else{clearInterval(state.timer);reveal()}},1000)}
-function reset(){clearInterval(state.timer);stopCamera();state.mode='idle';state.detected=null;state.stable=null;state.frames=0;state.round=0;state.playerWins=0;state.policeWins=0;state.history=[];$('count').textContent='准备';$('phase').textContent='让手进入镜头，然后开始倒计时';$('police-choice').textContent='？';$('player-choice').textContent='？';$('camera-status').textContent='摄像头未启动';$('retry').hidden=true;$('start').hidden=false;$('demo').hidden=false;$('start').disabled=false;$('demo').disabled=false;setResult('准备好后开始挑战');showGesture(null);renderScore()}
+function countdown(){
+  let n=3,spinIndex=0;
+  const gestures=['rock','paper','scissors'];
+  state.countingDown=true;
+  state.pendingPolice=gestures[Math.floor(Math.random()*gestures.length)];
+  $('retry').hidden=true;$('start').hidden=true;$('demo').hidden=true;
+  showPoliceGesture(null);showPlayerGesture(null);$('count').className='count';$('count').textContent=n;
+  const spin=()=>highlightCountdownGesture(gestures[spinIndex++%gestures.length]);
+  spin();
+  state.gestureTimer=setInterval(spin,130);
+  $('phase').textContent=`第 ${state.round+1} 回合：倒数结束时锁定手势`;setResult('');
+  state.timer=setInterval(()=>{n--;if(n>0){$('count').textContent=n;$('count').classList.remove('tick');void $('count').offsetWidth;$('count').classList.add('tick')}else{clearInterval(state.timer);clearInterval(state.gestureTimer);state.countingDown=false;highlightCountdownGesture(state.pendingPolice);setTimeout(()=>{clearCountdownGesture();reveal(state.pendingPolice)},260)}},1000)
+}
+function reset(){clearInterval(state.timer);clearInterval(state.gestureTimer);stopCamera();state.mode='idle';state.countingDown=false;state.pendingPolice=null;clearCountdownGesture();state.detected=null;state.stable=null;state.frames=0;state.round=0;state.playerWins=0;state.policeWins=0;state.history=[];$('count').className='count';$('count').textContent='准备';$('phase').textContent='';showPoliceGesture(null);showPlayerGesture(null);$('camera-status').textContent='摄像头未启动';$('retry').hidden=true;$('start').hidden=false;$('demo').hidden=false;$('start').disabled=false;$('demo').disabled=false;setResult('准备好后开始挑战');showGesture(null);renderScore()}
 $('start').onclick=async()=>{reset();$('start').disabled=true;setResult('正在启动摄像头与手势识别…');try{await loadCamera();countdown()}catch(error){setResult(error.message,'lose');$('camera-status').textContent='启动失败';$('start').disabled=false}};
 $('demo').onclick=()=>{reset();state.mode='demo';showGesture(state.selected);$('camera-status').textContent='演示模式';$('phase').textContent='点击左下角手势选择你要出的拳';countdown()};
 $('retry').onclick=()=>state.round<3&&state.mode!=='idle'?countdown():reset();
