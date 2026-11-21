@@ -1,5 +1,7 @@
 export const STREET_SPEED = 180;
-export const SAFE_LEAD_SECONDS = 18;
+// Obstacles appear in the opening view. This is only a short reaction lead,
+// not the former 15–20 second unobstructed run.
+export const SAFE_LEAD_SECONDS = 3;
 export const MODULE_TYPES = Object.freeze({
   EMPTY: 'empty',
   SHORT_JUMP: 'short-jump',
@@ -32,7 +34,7 @@ function choose(random, entries) {
 }
 
 function earlyPool() {
-  return [[MODULE_TYPES.SHORT_JUMP, 45], [MODULE_TYPES.SHORT_CROUCH, 45], [MODULE_TYPES.EMPTY, 10]];
+  return [[MODULE_TYPES.SHORT_JUMP, 50], [MODULE_TYPES.SHORT_CROUCH, 50]];
 }
 
 function middlePool() {
@@ -44,10 +46,13 @@ function latePool() {
 }
 
 function collisionFor(type, x, width) {
-  if (type === MODULE_TYPES.SHORT_JUMP) return { x: x + width * .42, width: Math.max(68, width * .16), kind: 'barrier' };
-  if (type === MODULE_TYPES.LONG_JUMP) return { x: x + width * .4, width: Math.max(168, width * .25), kind: 'gap' };
-  if (type === MODULE_TYPES.SHORT_CROUCH) return { x: x + width * .24, width: width * .52, kind: 'awning' };
-  if (type === MODULE_TYPES.LONG_CROUCH) return { x: x + width * .12, width: width * .76, kind: 'scaffold' };
+  // The source art includes plenty of decorative framing. Gameplay only uses
+  // the central hazard, sized to the actual airtime / crouch duration with a
+  // little timing forgiveness at both edges.
+  if (type === MODULE_TYPES.SHORT_JUMP) return { x: x + width * .46, width: Math.min(82, width * .12), kind: 'barrier' };
+  if (type === MODULE_TYPES.LONG_JUMP) return { x: x + width * .45, width: Math.min(116, width * .17), kind: 'gap' };
+  if (type === MODULE_TYPES.SHORT_CROUCH) return { x: x + width * .44, width: Math.min(110, width * .16), kind: 'awning' };
+  if (type === MODULE_TYPES.LONG_CROUCH) return { x: x + width * .37, width: Math.min(190, width * .28), kind: 'scaffold' };
   return null;
 }
 
@@ -100,7 +105,7 @@ export function createStreetRoute(seed = Date.now()) {
 
 export function validateStreetRoute(route) {
   if (route.modules.length < 36 || route.modules.length > 60) return false;
-  if (route.safeLead < 15 * STREET_SPEED || route.safeLead > 20 * STREET_SPEED) return false;
+  if (route.safeLead < 0 || route.safeLead > 3 * STREET_SPEED) return false;
   let previousEnd = route.safeLead;
   let hardStreak = 0;
   for (const module of route.modules) {

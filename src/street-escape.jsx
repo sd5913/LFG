@@ -3,11 +3,31 @@ import { createStreetRoute, MODULE_TYPES, STREET_SPEED } from './street-route.js
 
 const VIEW_WIDTH = 1600;
 const VIEW_HEIGHT = 900;
-const PLAYER_SPAWN = 540;
+// The thief begins just outside the service door.  The camera stays still until
+// they reach one third of the stage, then scrolls with the route while keeping
+// the thief in that screen position.
+const PLAYER_SPAWN = 268;
+const PLAYER_LOCK_SCREEN_X = VIEW_WIDTH / 3;
 const GRAVITY = 1600;
-const SMALL_JUMP_VELOCITY = -620;
-const BIG_JUMP_VELOCITY = -810;
-const HOLD_THRESHOLD = 190;
+const SMALL_JUMP_VELOCITY = -670;
+const BIG_JUMP_VELOCITY = -900;
+// Forward impulse is deliberately independent of A/D movement. It makes a
+// jump carry the thief over an obstacle instead of only bobbing vertically.
+// A small jump should clear the short barricade with a little room to spare,
+// rather than carrying the thief across an entire module (about 1.5× the
+// 168px visual barricade width at the current gravity/launch velocity).
+const SMALL_JUMP_FORWARD_SPEED = 300;
+const BIG_JUMP_FORWARD_SPEED = 610;
+const DOUBLE_TAP_WINDOW = 280;
+const CROUCH_TAP_DURATION = 620;
+const GUARD_ENTRY_DELAY = 5;
+const GUARD_SPEED = 214;
+const GUARD_CATCH_DISTANCE = 72;
+const isControlInput = (event) => event.key === 'Control' || event.code === 'Control' || event.code === 'ControlLeft' || event.code === 'ControlRight';
+// These are deliberately named after the supplied action references:
+// attachment one = Space jump, attachment two = Control crouch.
+const JUMP_PLAYER_ART = '/assets/player-actions/jump.png';
+const CROUCH_PLAYER_ART = '/assets/player-actions/crouch.png';
 
 const obstacleArt = {
   [MODULE_TYPES.SHORT_JUMP]: '/street-escape/jump-short-barricade.png',
@@ -18,10 +38,10 @@ const obstacleArt = {
 
 const moduleLabel = {
   [MODULE_TYPES.EMPTY]: '恢复区',
-  [MODULE_TYPES.SHORT_JUMP]: '短按 Space · 越过路障',
-  [MODULE_TYPES.LONG_JUMP]: '长按 Space · 跃过断路',
-  [MODULE_TYPES.SHORT_CROUCH]: '短按 Control · 低身穿过',
-  [MODULE_TYPES.LONG_CROUCH]: '长按 Control · 持续低身',
+  [MODULE_TYPES.SHORT_JUMP]: 'Space 起跳 · 越过路障',
+  [MODULE_TYPES.LONG_JUMP]: '双击 Space · 大跳越过断路',
+  [MODULE_TYPES.SHORT_CROUCH]: 'Control 下蹲 · 穿过低檐',
+  [MODULE_TYPES.LONG_CROUCH]: 'Control 下蹲 · 通过脚手架',
 };
 
 // Art scale intentionally differs from the timing module: collision ranges
@@ -33,14 +53,6 @@ const artMetrics = {
   [MODULE_TYPES.LONG_CROUCH]: { width: 550 },
 };
 
-const routeCards = [
-  { type: MODULE_TYPES.EMPTY, label: '安全跑动' },
-  { type: MODULE_TYPES.SHORT_JUMP, label: '短跳路障' },
-  { type: MODULE_TYPES.LONG_JUMP, label: '长跳断路' },
-  { type: MODULE_TYPES.SHORT_CROUCH, label: '短蹲低檐' },
-  { type: MODULE_TYPES.LONG_CROUCH, label: '长蹲脚手架' },
-];
-
 function freshSeed() {
   return (Date.now() + Math.floor(Math.random() * 0x7fffffff)) >>> 0;
 }
@@ -50,7 +62,7 @@ function nextInstruction(route, x) {
 }
 
 function buildView(route, runtime) {
-  const camera = Math.max(0, Math.min(runtime.x - 420, route.length - VIEW_WIDTH));
+  const camera = Math.max(0, Math.min(runtime.x - PLAYER_LOCK_SCREEN_X, route.length - VIEW_WIDTH));
   return {
     x: runtime.x,
     y: runtime.y,
@@ -58,6 +70,8 @@ function buildView(route, runtime) {
     facing: runtime.facing,
     phase: runtime.phase,
     elapsed: runtime.elapsed,
+    guardX: runtime.guardX,
+    guardActive: runtime.guardActive,
     camera,
     instruction: nextInstruction(route, runtime.x),
   };
@@ -68,18 +82,29 @@ function formatClock(seconds) {
   return `${String(Math.floor(whole / 60)).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`;
 }
 
+function createEscapeRuntime() {
+  // The guard has a fixed five-second entrance. It then runs slightly faster
+  // than the thief, keeping the pressure predictable on every random route.
+  return { x: PLAYER_SPAWN, y: 0, velocityY: 0, jumpVelocityX: 0, crouching: false, facing: 'right', guardX: null, guardActive: false, elapsed: 0, phase: 'running', lastPaint: 0 };
+}
+
+function launchJump(runtime, velocityY, forwardSpeed) {
+  runtime.velocityY = velocityY;
+  runtime.jumpVelocityX = forwardSpeed;
+}
+
 export function StreetEscape({ onExit, alertLevel = 0 }) {
   const routeRef = useRef(createStreetRoute(freshSeed()));
-  const runtimeRef = useRef({ x: PLAYER_SPAWN, y: 0, velocityY: 0, crouching: false, facing: 'right', elapsed: 0, phase: 'running', lastPaint: 0 });
-  const heldRef = useRef({ spaceAt: null, controlAt: null });
+  const runtimeRef = useRef(createEscapeRuntime());
+  const heldRef = useRef({ lastSpaceAt: 0, controlHeld: false, crouchUntil: 0, left: false, right: false });
   const [route, setRoute] = useState(routeRef.current);
   const [view, setView] = useState(() => buildView(routeRef.current, runtimeRef.current));
 
   const restart = useCallback(() => {
     const nextRoute = createStreetRoute(freshSeed());
     routeRef.current = nextRoute;
-    runtimeRef.current = { x: PLAYER_SPAWN, y: 0, velocityY: 0, crouching: false, facing: 'right', elapsed: 0, phase: 'running', lastPaint: 0 };
-    heldRef.current = { spaceAt: null, controlAt: null };
+    runtimeRef.current = createEscapeRuntime();
+    heldRef.current = { lastSpaceAt: 0, controlHeld: false, crouchUntil: 0, left: false, right: false };
     setRoute(nextRoute);
     setView(buildView(nextRoute, runtimeRef.current));
   }, []);
@@ -88,29 +113,35 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
     const keyDown = (event) => {
       const runtime = runtimeRef.current;
       if (runtime.phase !== 'running') return;
-      if (event.code === 'ArrowLeft') { runtime.facing = 'left'; event.preventDefault(); }
-      if (event.code === 'ArrowRight') { runtime.facing = 'right'; event.preventDefault(); }
-      if (event.code === 'Space' && heldRef.current.spaceAt === null) {
-        heldRef.current.spaceAt = performance.now();
+      if (event.code === 'KeyA') { heldRef.current.left = true; runtime.facing = 'left'; event.preventDefault(); }
+      if (event.code === 'KeyD') { heldRef.current.right = true; runtime.facing = 'right'; event.preventDefault(); }
+      if (event.code === 'Space' && !event.repeat) {
+        const now = performance.now();
+        const isDoubleTap = now - heldRef.current.lastSpaceAt <= DOUBLE_TAP_WINDOW;
+        heldRef.current.lastSpaceAt = now;
+        // The first press reacts immediately. A second quick press upgrades
+        // that live jump, so a double tap is still recognized after takeoff.
+        if (isDoubleTap && runtime.y <= 0) launchJump(runtime, BIG_JUMP_VELOCITY, BIG_JUMP_FORWARD_SPEED);
+        else if (runtime.y === 0) launchJump(runtime, SMALL_JUMP_VELOCITY, SMALL_JUMP_FORWARD_SPEED);
         event.preventDefault();
       }
-      if ((event.code === 'ControlLeft' || event.code === 'ControlRight') && heldRef.current.controlAt === null) {
-        heldRef.current.controlAt = performance.now();
+      if (isControlInput(event) && !event.repeat) {
+        const now = performance.now();
+        heldRef.current.controlHeld = true;
+        // A tap deliberately holds the crouch briefly, so Ctrl works both as
+        // an ordinary key press and as a held low-profile action.
+        heldRef.current.crouchUntil = now + CROUCH_TAP_DURATION;
         runtime.crouching = true;
         event.preventDefault();
       }
     };
     const keyUp = (event) => {
       const runtime = runtimeRef.current;
-      if (event.code === 'Space' && heldRef.current.spaceAt !== null) {
-        const heldFor = performance.now() - heldRef.current.spaceAt;
-        heldRef.current.spaceAt = null;
-        if (runtime.phase === 'running' && runtime.y === 0) runtime.velocityY = heldFor >= HOLD_THRESHOLD ? BIG_JUMP_VELOCITY : SMALL_JUMP_VELOCITY;
-        event.preventDefault();
-      }
-      if (event.code === 'ControlLeft' || event.code === 'ControlRight') {
-        heldRef.current.controlAt = null;
-        runtime.crouching = false;
+      if (event.code === 'KeyA') { heldRef.current.left = false; event.preventDefault(); }
+      if (event.code === 'KeyD') { heldRef.current.right = false; event.preventDefault(); }
+      if (event.code === 'Space') event.preventDefault();
+      if (isControlInput(event)) {
+        heldRef.current.controlHeld = false;
         event.preventDefault();
       }
     };
@@ -128,21 +159,30 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
       const delta = Math.min((now - previous) / 1000, .05);
       previous = now;
       if (runtime.phase === 'running') {
+        runtime.crouching = heldRef.current.controlHeld || now < heldRef.current.crouchUntil;
         runtime.elapsed += delta;
-        runtime.x += STREET_SPEED * delta;
+        const direction = heldRef.current.right ? 1 : heldRef.current.left ? -1 : 0;
+        const jumpBoost = runtime.y < 0 || runtime.velocityY < 0 ? runtime.jumpVelocityX : 0;
+        runtime.x = Math.max(PLAYER_SPAWN, runtime.x + (direction * STREET_SPEED + jumpBoost) * delta);
+        if (!runtime.guardActive && runtime.elapsed >= GUARD_ENTRY_DELAY) {
+          runtime.guardActive = true;
+          runtime.guardX = runtime.x - 500;
+        }
+        if (runtime.guardActive) runtime.guardX += GUARD_SPEED * delta;
         runtime.y += runtime.velocityY * delta;
         runtime.velocityY += GRAVITY * delta;
-        if (runtime.y >= 0) { runtime.y = 0; runtime.velocityY = 0; }
+        if (runtime.y >= 0) { runtime.y = 0; runtime.velocityY = 0; runtime.jumpVelocityX = 0; }
 
         for (const module of activeRoute.modules) {
           const collision = module.collision;
           if (!collision || runtime.x < collision.x || runtime.x > collision.x + collision.width) continue;
           const jumpingHeight = -runtime.y;
-          const cleared = collision.kind === 'barrier' ? jumpingHeight > 78
-            : collision.kind === 'gap' ? jumpingHeight > 125
+          const cleared = collision.kind === 'barrier' ? jumpingHeight > 50
+            : collision.kind === 'gap' ? jumpingHeight > 90
               : runtime.crouching;
           if (!cleared) { runtime.phase = 'failed'; break; }
         }
+        if (runtime.guardActive && runtime.guardX >= runtime.x - GUARD_CATCH_DISTANCE) runtime.phase = 'caught';
         if (runtime.x >= activeRoute.van.triggerX) runtime.phase = 'complete';
       }
       if (now - runtime.lastPaint > 45 || runtime.phase !== 'running') {
@@ -156,15 +196,19 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
   }, []);
 
   const playerBottom = 27 + ((-view.y) / VIEW_HEIGHT) * 100;
-  const progress = Math.min(100, (view.x / route.van.triggerX) * 100);
+  const progress = Math.min(100, Math.max(0, ((view.x - PLAYER_SPAWN) / (route.van.triggerX - PLAYER_SPAWN)) * 100));
   const activeInstruction = view.instruction;
+  const playerArt = view.crouching
+    ? CROUCH_PLAYER_ART
+    : view.y < 0
+      ? JUMP_PLAYER_ART
+      : view.facing === 'left' ? '/assets/player/left.png' : '/assets/player/right.png';
 
   return <main className="escape-app">
     <section className="escape-stage" aria-label="Museum Heist 第三关：街头逃脱">
       <div className="escape-background" style={{ backgroundPositionX: `${-view.camera * .18}px` }} />
       <div className="escape-night-wash" />
-      <div className="escape-ground" />
-      <img className="escape-start" src="/street-escape/start-museum-service-exit.png" alt="博物馆后勤出口" />
+      <img className="escape-start" style={{ left: `${((42 - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/start-museum-service-exit.png" alt="博物馆后勤出口" />
 
       {route.modules.map((module) => {
         const art = obstacleArt[module.type];
@@ -180,9 +224,18 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
       })}
       <img className="escape-van" style={{ left: `${((route.van.x - view.camera) / VIEW_WIDTH) * 100}%`, width: `${(300 / VIEW_WIDTH) * 100}%` }} src="/street-escape/end-getaway-van.png" alt="接应面包车" />
 
-      <div className={`escape-player ${view.crouching ? 'crouching' : ''}`} style={{ bottom: `${playerBottom}%` }}>
-        <img src={view.facing === 'left' ? '/assets/player/left.png' : '/assets/player/right.png'} alt="正在逃离的小偷" />
+      <div
+        className={`escape-player ${view.crouching ? 'crouching' : ''} ${view.y < 0 ? 'jumping' : ''}`}
+        style={{
+          left: `${((view.x - view.camera) / VIEW_WIDTH) * 100}%`,
+          bottom: `${playerBottom}%`,
+        }}
+      >
+        <img src={playerArt} alt="正在逃离的小偷" />
       </div>
+      {view.guardActive && <div className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }}>
+        <img src="/assets/guard/right.png" alt="正在追赶的保安" />
+      </div>}
 
       <header className="escape-top-hud" aria-label="逃脱状态栏">
         <img className="escape-top-hud-background" src="/stealth-ui/top_hud_background.png" alt="" />
@@ -205,18 +258,9 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
           <button type="button" onClick={onExit}>返回展厅</button>
         </div>
       </header>
-      <section className="escape-module-cards" aria-label="逃脱操作提示">
-        {routeCards.map((card, index) => <article className={`escape-module-card ${activeInstruction?.type === card.type ? 'active' : ''}`} key={card.type}>
-          <span>{String(index + 1).padStart(2, '0')}</span>
-          {card.type === MODULE_TYPES.EMPTY
-            ? <img className="escape-card-player" src="/assets/player/right.png" alt="" />
-            : <img src={obstacleArt[card.type]} alt="" />}
-          <strong>{card.label}</strong>
-        </article>)}
-      </section>
-      <p className="escape-objective"><b>Space</b> 短按小跳 / 长按大跳　·　<b>Ctrl</b> 短按小蹲 / 长按长蹲　·　{activeInstruction ? moduleLabel[activeInstruction.type] : '接应车就在前方'}</p>
+      <p className="escape-objective"><b>A / D</b> 移动　·　<b>Space</b> 起跳 / 双击大跳　·　<b>Ctrl</b> 下蹲　·　{activeInstruction ? moduleLabel[activeInstruction.type] : '接应车就在前方'}</p>
 
-      {view.phase === 'failed' && <section className="escape-result failure" role="alert">
+      {(view.phase === 'failed' || view.phase === 'caught') && <section className="escape-result failure" role="alert">
         <span>逃脱中断</span><strong>警卫追上来了</strong><p>这条夜路会重新生成。</p><button type="button" onClick={restart}>重新逃脱</button>
       </section>}
       {view.phase === 'complete' && <section className="escape-result success" role="alert">

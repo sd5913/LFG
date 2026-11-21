@@ -94,7 +94,6 @@ button { font: inherit; }
 .escape-stage img { position: absolute; display: block; max-width: none; image-rendering: pixelated; user-select: none; }
 .escape-background { position: absolute; z-index: 0; inset: 0; background-color: #0a263a; background-image: url('/street-escape/street-night-loop-dark.png'); background-repeat: repeat-x; background-size: auto 100%; image-rendering: pixelated; }
 .escape-night-wash { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, #00111c52, transparent 35%, #03131e33 70%, #00111c66), linear-gradient(180deg, #02101f40, transparent 47%, #0209126b); pointer-events: none; }
-.escape-ground { position: absolute; z-index: 2; right: 0; bottom: 0; left: 0; height: 26%; border-top: 4px solid #416a78; background: repeating-linear-gradient(90deg, #102f3d 0 5.8%, #143a48 5.8% 11.6%); box-shadow: inset 0 16px #0b2434, inset 0 -14px #061721; }
 .escape-start { z-index: 3; bottom: 19%; left: -1%; width: 17%; filter: brightness(1.12) drop-shadow(0 5px 0 #04101a); }
 .escape-obstacle { z-index: 5; bottom: 18.4%; height: auto; filter: brightness(1.16) contrast(1.04) drop-shadow(0 5px 0 #020b12); }
 .escape-short-jump { bottom: 17.8%; }.escape-long-jump { z-index: 6; bottom: 17.5%; }.escape-short-crouch, .escape-long-crouch { bottom: 23%; }
@@ -111,14 +110,48 @@ button { font: inherit; }
    runway around each collision range just like the escape design reference. */
 .escape-stage { background: #061624; }
 .escape-background { background-size: auto 100%; }
-.escape-ground { height: 27%; border-top-width: 3px; background: repeating-linear-gradient(90deg, #102f3d 0 5%, #143a48 5% 10%); box-shadow: inset 0 12px #0b2434, inset 0 -12px #061721; }
 .escape-start { bottom: 26.4%; left: 1.2%; width: 12%; }
 .escape-obstacle { bottom: 26.3%; filter: brightness(1.16) contrast(1.04) drop-shadow(0 4px 0 #020b12); }
 .escape-short-jump, .escape-long-jump, .escape-short-crouch, .escape-long-crouch { bottom: 26.3%; }
 .escape-gap-void { top: 72.9%; bottom: 0; }
 .escape-van { bottom: 26.2%; filter: brightness(1.22) drop-shadow(0 5px 0 #020a11); }
-.escape-player { left: 23.5%; width: 8.8%; filter: brightness(1.25) drop-shadow(0 4px 0 #020a11); }
-.escape-player.crouching { width: 9.4%; filter: brightness(1.25) drop-shadow(0 3px 0 #020a11); }
+.escape-player {
+  /* All action PNGs sit inside one bottom-aligned canvas.  Their source
+     proportions differ, but this keeps their apparent height and floor line
+     unchanged when switching between running, jumping and crouching. */
+  width: 10.8%;
+  height: 15%;
+  transform: translateX(-50%);
+  filter: brightness(1.25) drop-shadow(0 4px 0 #020a11);
+}
+.escape-player img {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: auto;
+  height: 100%;
+  max-width: none;
+  transform-origin: center bottom;
+  transform: translateX(-50%);
+}
+.escape-player.crouching {
+  width: 10.8%;
+  height: 15%;
+  filter: brightness(1.25) drop-shadow(0 3px 0 #020a11);
+}
+/* Action PNGs use a wider source canvas than the running art.  Fix their
+   display height and bottom edge so the thief does not shrink when posing. */
+.escape-player.crouching img {
+  /* The crouch artwork occupies more of its source canvas than the running
+     sprite. Scale it down from the same floor anchor so it reads as the same
+     thief lowering their body, not as a larger replacement character. */
+  transform: translateX(-50%) scale(.76);
+}
+.escape-player.jumping img {
+  transform: translateX(-50%) scale(1.02);
+}
+.escape-guard { position: absolute; z-index: 8; bottom: 27%; width: 8.1%; filter: brightness(1.28) drop-shadow(0 4px 0 #020a11); transition: left .04s linear; }
+.escape-guard img { position: relative; width: 100%; height: auto; }
 
 /* The escape HUD shares the visual system and source assets of the museum map. */
 .escape-top-hud { position: absolute; z-index: 25; inset: 0 0 auto; height: 12.8%; color: #f7dba6; font-family: 'Noto Sans SC', ui-monospace, monospace; pointer-events: none; }
@@ -144,8 +177,4 @@ button { font: inherit; }
 .escape-loot-hud b { font-size: clamp(9px, 1.35cqw, 23px); }.escape-loot-hud small { color: #9fc3cb; font: 700 clamp(6px, .65cqw, 11px) ui-monospace, monospace; }
 .escape-loot-hud button { border: 1px solid #789aa1; padding: .45em .65em; background: #102b37e8; color: #d6f0ed; font: 700 clamp(6px, .58cqw, 10px) ui-monospace, monospace; cursor: pointer; }.escape-loot-hud button:hover { border-color: #f4c45e; background: #1c3f4b; }
 
-.escape-module-cards { position: absolute; z-index: 20; right: .7%; bottom: .8%; left: .7%; display: grid; grid-template-columns: 1.05fr repeat(4, 1fr); gap: .65%; height: 17.3%; }
-.escape-module-card { position: relative; display: grid; overflow: hidden; align-content: center; justify-items: center; border: 2px solid #405d71; background: linear-gradient(180deg, #0d2637e8, #061622f0); box-shadow: inset 0 0 0 2px #07111b, 2px 3px #020811; color: #a9c5cd; transition: border-color .15s ease, background .15s ease; }
-.escape-module-card::before { position: absolute; top: 0; right: 0; left: 0; height: 3px; content: ''; background: #53768a; }.escape-module-card.active { border-color: #57e6ec; background: linear-gradient(180deg, #12394ce8, #061a25f0); box-shadow: inset 0 0 18px #24dbe433, 2px 3px #020811; }.escape-module-card.active::before { background: #73f9f0; }
-.escape-module-card > span { position: absolute; top: 6%; left: 7%; color: #82bbc5; font: 700 clamp(5px, .5cqw, 9px) ui-monospace, monospace; }.escape-module-card > img { position: relative; width: 56%; height: 61%; object-fit: contain; filter: brightness(1.18) drop-shadow(0 3px #020a11); }.escape-module-card > img.escape-card-player { width: 37%; object-position: center bottom; }.escape-module-card strong { position: absolute; bottom: 7%; color: #d8e9df; font-size: clamp(6px, .62cqw, 11px); white-space: nowrap; }
-.escape-objective { z-index: 21; bottom: 19%; width: 100%; color: #d3e6e2; font-size: clamp(6px, .64cqw, 11px); }.escape-objective b { color: #ffd26e; }
+.escape-objective { z-index: 21; bottom: 2.5%; width: 100%; color: #d3e6e2; font-size: clamp(6px, .64cqw, 11px); }.escape-objective b { color: #ffd26e; }

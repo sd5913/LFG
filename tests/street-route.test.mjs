@@ -33,3 +33,24 @@ test('each long challenge has a clear 1.5–2 second recovery module', () => {
     assert.ok(recovery.seconds >= 1.5 && recovery.seconds <= 2);
   });
 });
+
+test('every obstacle uses a compact central collision zone', () => {
+  const maximumCollisionRatio = {
+    [MODULE_TYPES.SHORT_JUMP]: .12,
+    [MODULE_TYPES.LONG_JUMP]: .17,
+    [MODULE_TYPES.SHORT_CROUCH]: .16,
+    [MODULE_TYPES.LONG_CROUCH]: .28,
+  };
+
+  for (const seed of [12, 404, 5913]) {
+    const route = createStreetRoute(seed);
+    for (const module of route.modules) {
+      if (!module.collision) continue;
+      const { collision } = module;
+      assert.ok(collision.x >= module.x, `${module.type}: collision starts before its art`);
+      assert.ok(collision.x + collision.width <= module.x + module.width, `${module.type}: collision exceeds its art`);
+      assert.ok(collision.width / module.width <= maximumCollisionRatio[module.type] + Number.EPSILON,
+        `${module.type}: collision area is wider than its tuned action window`);
+    }
+  }
+});
