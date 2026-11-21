@@ -1,16 +1,31 @@
 export const STREET_SPEED = 180;
-// Obstacles appear in the opening view. This is only a short reaction lead,
-// not the former 15–20 second unobstructed run.
-export const SAFE_LEAD_SECONDS = 3;
+export const STREET_PLAYER_SPAWN = 268;
+export const SHORT_BARRICADE_ART_WIDTH = 168;
+// 624 opaque columns in the 1536px source canvas (the rest is padding).
+export const SHORT_BARRICADE_VISIBLE_WIDTH = SHORT_BARRICADE_ART_WIDTH * 624 / 1536;
+export const ROAD_GAP_ART_WIDTH = 292;
+// The road surface ends at columns 780 and 1394 in the 2172px-wide sprite.
+export const ROAD_GAP_LEFT_LIP = ROAD_GAP_ART_WIDTH * 780 / 2172;
+export const ROAD_GAP_RIGHT_LIP = ROAD_GAP_ART_WIDTH * 1394 / 2172;
+const ROAD_GAP_WIDTH = 282;
+export const SAFE_LEAD_SECONDS = 2;
 export const MODULE_TYPES = Object.freeze({
-  EMPTY: 'empty',
   SHORT_JUMP: 'short-jump',
   SHORT_CROUCH: 'short-crouch',
   LONG_JUMP: 'long-jump',
   LONG_CROUCH: 'long-crouch',
 });
 
+const shortTypes = [MODULE_TYPES.SHORT_JUMP, MODULE_TYPES.SHORT_CROUCH];
 const hardTypes = new Set([MODULE_TYPES.LONG_JUMP, MODULE_TYPES.LONG_CROUCH]);
+const OBSTACLE_BATCH_COUNT = 3;
+const OBSTACLES_PER_BATCH = 6;
+const collisionSpecs = {
+  [MODULE_TYPES.SHORT_JUMP]: { kind: 'barrier', width: Math.round(SHORT_BARRICADE_VISIBLE_WIDTH * .8) },
+  [MODULE_TYPES.LONG_JUMP]: { kind: 'gap', width: ROAD_GAP_WIDTH },
+  [MODULE_TYPES.SHORT_CROUCH]: { kind: 'awning', width: 100 },
+  [MODULE_TYPES.LONG_CROUCH]: { kind: 'scaffold', width: 190 },
+};
 
 export function seededRandom(seed) {
   let state = (Number(seed) >>> 0) || 0x9e3779b9;
@@ -23,37 +38,29 @@ export function seededRandom(seed) {
   };
 }
 
-function choose(random, entries) {
-  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
-  let roll = random() * total;
-  for (const [value, weight] of entries) {
-    roll -= weight;
-    if (roll <= 0) return value;
+function shuffle(random, types) {
+  const shuffled = [...types];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
   }
-  return entries.at(-1)[0];
+  return shuffled;
 }
 
-function earlyPool() {
-  return [[MODULE_TYPES.SHORT_JUMP, 50], [MODULE_TYPES.SHORT_CROUCH, 50]];
-}
-
-function middlePool() {
-  return [[MODULE_TYPES.SHORT_JUMP, 30], [MODULE_TYPES.SHORT_CROUCH, 30], [MODULE_TYPES.LONG_JUMP, 20], [MODULE_TYPES.LONG_CROUCH, 20]];
-}
-
-function latePool() {
-  return [[MODULE_TYPES.SHORT_JUMP, 30], [MODULE_TYPES.SHORT_CROUCH, 30], [MODULE_TYPES.LONG_JUMP, 18], [MODULE_TYPES.LONG_CROUCH, 18], [MODULE_TYPES.EMPTY, 4]];
-}
-
-function collisionFor(type, x, width) {
-  // The source art includes plenty of decorative framing. Gameplay only uses
-  // the central hazard, sized to the actual airtime / crouch duration with a
-  // little timing forgiveness at both edges.
-  if (type === MODULE_TYPES.SHORT_JUMP) return { x: x + width * .46, width: Math.min(82, width * .12), kind: 'barrier' };
-  if (type === MODULE_TYPES.LONG_JUMP) return { x: x + width * .45, width: Math.min(116, width * .17), kind: 'gap' };
-  if (type === MODULE_TYPES.SHORT_CROUCH) return { x: x + width * .44, width: Math.min(110, width * .16), kind: 'awning' };
-  if (type === MODULE_TYPES.LONG_CROUCH) return { x: x + width * .37, width: Math.min(190, width * .28), kind: 'scaffold' };
-  return null;
+function buildObstacleOrder(random) {
+  // Two introductory obstacles, then all four types in every shuffled batch.
+  const order = shuffle(random, shortTypes);
+  const types = [...shortTypes, ...hardTypes];
+  for (let batchIndex = 0; batchIndex < OBSTACLE_BATCH_COUNT; batchIndex += 1) {
+    const batch = shuffle(random, batchIndex === 0 ? types : [...types, ...shortTypes]);
+    const previous = order.at(-1);
+    if (batch[0] === previous || (hardTypes.has(previous) && hardTypes.has(batch[0]))) {
+      const next = batch.findIndex((type) => shortTypes.includes(type) && type !== previous);
+      [batch[0], batch[next]] = [batch[next], batch[0]];
+    }
+    order.push(...batch);
+  }
+  return order;
 }
 
 /**
@@ -62,50 +69,32 @@ function collisionFor(type, x, width) {
  */
 export function createStreetRoute(seed = Date.now()) {
   const random = seededRandom(seed);
-  const moduleCount = 48 + Math.floor(random() * 9); // 48–56 modules
   const safeLead = SAFE_LEAD_SECONDS * STREET_SPEED;
-  const modules = [];
   let cursor = safeLead;
-  let elapsed = SAFE_LEAD_SECONDS;
-  let hardStreak = 0;
-  let recoverySlots = 0;
 
-  for (let index = 0; index < moduleCount; index += 1) {
-    const recovering = recoverySlots > 0;
-    let type;
-    let seconds;
-    if (recovering) {
-      type = MODULE_TYPES.EMPTY;
-      seconds = 1.5 + random() * .5;
-      recoverySlots -= 1;
-      hardStreak = 0;
-    } else {
-      const pool = elapsed < 60 ? earlyPool() : elapsed < 170 ? middlePool() : latePool();
-      type = choose(random, pool);
-      if (hardStreak >= 2 && hardTypes.has(type)) type = choose(random, earlyPool());
-      // Reserve the final slot for a recoverable obstacle: every long action
-      // must leave a clear beat before the getaway van.
-      if (index === moduleCount - 1 && hardTypes.has(type)) type = choose(random, earlyPool());
-      seconds = 3.7 + random() * 1.25;
-      if (hardTypes.has(type)) {
-        recoverySlots = 1;
-        hardStreak += 1;
-      } else hardStreak = 0;
-    }
+  const modules = buildObstacleOrder(random).map((type, index) => {
+    // Keep the landing runway inside each long module, then start the next obstacle.
+    const hard = hardTypes.has(type);
+    const seconds = hard ? 3.55 + random() * .3 : 2.65 + random() * .5;
     const width = Math.round(seconds * STREET_SPEED);
-    modules.push(Object.freeze({ id: `module-${index}`, index, type, x: cursor, width, seconds, recovery: recovering,
-      collision: collisionFor(type, cursor, width) }));
+    const spec = collisionSpecs[type];
+    const centerOffset = Math.round(width * .4 - spec.width / 2);
+    const collisionOffset = hard
+      ? Math.max(width - spec.width - 2 * STREET_SPEED, Math.min(centerOffset, width - spec.width - 1.5 * STREET_SPEED))
+      : centerOffset;
+    const collision = Object.freeze({ ...spec, x: cursor + collisionOffset });
+    const module = Object.freeze({ id: `module-${index}`, index, type, x: cursor, width, seconds: width / STREET_SPEED, collision });
     cursor += width;
-    elapsed += seconds;
-  }
+    return module;
+  });
   const van = Object.freeze({ x: cursor + 520, width: 620, triggerX: cursor + 770 });
   return Object.freeze({ seed: Number(seed) >>> 0, safeLead, modules: Object.freeze(modules), van,
-    length: van.triggerX + 320, targetSeconds: Math.round(van.triggerX / STREET_SPEED) });
+    length: van.triggerX + 320, targetSeconds: Math.round((van.triggerX - STREET_PLAYER_SPAWN) / STREET_SPEED) });
 }
 
 export function validateStreetRoute(route) {
-  if (route.modules.length < 36 || route.modules.length > 60) return false;
-  if (route.safeLead < 0 || route.safeLead > 3 * STREET_SPEED) return false;
+  if (route.modules.length !== OBSTACLE_BATCH_COUNT * OBSTACLES_PER_BATCH) return false;
+  if (route.safeLead < 0 || route.safeLead > SAFE_LEAD_SECONDS * STREET_SPEED) return false;
   let previousEnd = route.safeLead;
   let hardStreak = 0;
   for (const module of route.modules) {
@@ -114,9 +103,13 @@ export function validateStreetRoute(route) {
     if (hardTypes.has(module.type)) {
       hardStreak += 1;
       if (hardStreak > 2) return false;
-      const next = route.modules[module.index + 1];
-      if (!next || next.type !== MODULE_TYPES.EMPTY || next.seconds < 1.5 || next.seconds > 2) return false;
+      const runway = previousEnd - (module.collision.x + module.collision.width);
+      if (runway < 1.5 * STREET_SPEED || runway > 2 * STREET_SPEED) return false;
     } else hardStreak = 0;
   }
   return true;
+}
+
+export function fallsIntoStreetGap(gap, groundStartX, endX, airborne) {
+  return !airborne && Math.max(groundStartX, endX) > gap.x && Math.min(groundStartX, endX) < gap.x + gap.width;
 }

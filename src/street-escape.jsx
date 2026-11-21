@@ -1,45 +1,36 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createStreetRoute, MODULE_TYPES, STREET_SPEED } from './street-route.js';
+import { createStreetRoute, fallsIntoStreetGap, MODULE_TYPES, ROAD_GAP_ART_WIDTH, ROAD_GAP_LEFT_LIP, ROAD_GAP_RIGHT_LIP, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
+import { advanceStreetJump, jumpOnSpacePress } from './street-jump.js';
+import { advanceStreetChase, STAGGER_CATCH_LIMIT } from './street-chase.js';
 
 const VIEW_WIDTH = 1600;
 const VIEW_HEIGHT = 900;
 // The thief begins just outside the service door.  The camera stays still until
 // they reach one third of the stage, then scrolls with the route while keeping
 // the thief in that screen position.
-const PLAYER_SPAWN = 268;
 const PLAYER_LOCK_SCREEN_X = VIEW_WIDTH / 3;
-const GRAVITY = 1600;
-const SMALL_JUMP_VELOCITY = -670;
-const BIG_JUMP_VELOCITY = -900;
-// Forward impulse is deliberately independent of A/D movement. It makes a
-// jump carry the thief over an obstacle instead of only bobbing vertically.
-// A small jump should clear the short barricade with a little room to spare,
-// rather than carrying the thief across an entire module (about 1.5× the
-// 168px visual barricade width at the current gravity/launch velocity).
-const SMALL_JUMP_FORWARD_SPEED = 300;
-const BIG_JUMP_FORWARD_SPEED = 610;
-const DOUBLE_TAP_WINDOW = 280;
 const CROUCH_TAP_DURATION = 620;
-const GUARD_ENTRY_DELAY = 5;
-const GUARD_SPEED = 214;
-const GUARD_CATCH_DISTANCE = 72;
 const isControlInput = (event) => event.key === 'Control' || event.code === 'Control' || event.code === 'ControlLeft' || event.code === 'ControlRight';
 // These are deliberately named after the supplied action references:
 // attachment one = Space jump, attachment two = Control crouch.
 const JUMP_PLAYER_ART = '/assets/player-actions/jump.png';
 const CROUCH_PLAYER_ART = '/assets/player-actions/crouch.png';
+const movementDirection = ({ left, right }) => Number(right) - Number(left);
+const isSpaceInput = ({ code, key }) => code === 'Space' || key === ' ';
+
+function createHeldInputs() {
+  return { controlHeld: false, crouchUntil: 0, left: false, right: false };
+}
 
 const obstacleArt = {
   [MODULE_TYPES.SHORT_JUMP]: '/street-escape/jump-short-barricade.png',
-  [MODULE_TYPES.LONG_JUMP]: '/street-escape/jump-long-road-gap.png',
   [MODULE_TYPES.SHORT_CROUCH]: '/street-escape/crouch-short-awning.png',
   [MODULE_TYPES.LONG_CROUCH]: '/street-escape/crouch-long-scaffold.png',
 };
 
 const moduleLabel = {
-  [MODULE_TYPES.EMPTY]: '恢复区',
   [MODULE_TYPES.SHORT_JUMP]: 'Space 起跳 · 越过路障',
-  [MODULE_TYPES.LONG_JUMP]: '双击 Space · 大跳越过断路',
+  [MODULE_TYPES.LONG_JUMP]: '连按 Space · 大跳越过断路',
   [MODULE_TYPES.SHORT_CROUCH]: 'Control 下蹲 · 穿过低檐',
   [MODULE_TYPES.LONG_CROUCH]: 'Control 下蹲 · 通过脚手架',
 };
@@ -47,8 +38,7 @@ const moduleLabel = {
 // Art scale intentionally differs from the timing module: collision ranges
 // govern gameplay while these compact foreground pieces match the scene scale.
 const artMetrics = {
-  [MODULE_TYPES.SHORT_JUMP]: { width: 168 },
-  [MODULE_TYPES.LONG_JUMP]: { width: 292 },
+  [MODULE_TYPES.SHORT_JUMP]: { width: SHORT_BARRICADE_ART_WIDTH },
   [MODULE_TYPES.SHORT_CROUCH]: { width: 224 },
   [MODULE_TYPES.LONG_CROUCH]: { width: 550 },
 };
@@ -58,7 +48,7 @@ function freshSeed() {
 }
 
 function nextInstruction(route, x) {
-  return route.modules.find((module) => module.x + module.width > x + 120) ?? null;
+  return route.modules.find(({ collision }) => collision.x + collision.width >= x) ?? null;
 }
 
 function buildView(route, runtime) {
@@ -67,11 +57,12 @@ function buildView(route, runtime) {
     x: runtime.x,
     y: runtime.y,
     crouching: runtime.crouching,
+    bigJump: runtime.jump?.big ?? false,
     facing: runtime.facing,
     phase: runtime.phase,
     elapsed: runtime.elapsed,
-    guardX: runtime.guardX,
-    guardActive: runtime.guardActive,
+    guardX: runtime.guard.x,
+    showCatch: runtime.elapsed < runtime.guard.recoveryUntil,
     camera,
     instruction: nextInstruction(route, runtime.x),
   };
@@ -82,21 +73,30 @@ function formatClock(seconds) {
   return `${String(Math.floor(whole / 60)).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`;
 }
 
-function createEscapeRuntime() {
-  // The guard has a fixed five-second entrance. It then runs slightly faster
-  // than the thief, keeping the pressure predictable on every random route.
-  return { x: PLAYER_SPAWN, y: 0, velocityY: 0, jumpVelocityX: 0, crouching: false, facing: 'right', guardX: null, guardActive: false, elapsed: 0, phase: 'running', lastPaint: 0 };
+function RoadGap({ collision, camera }) {
+  const position = (x) => `${((x - camera) / VIEW_WIDTH) * 100}%`;
+  const artWidth = `${(ROAD_GAP_ART_WIDTH / VIEW_WIDTH) * 100}%`;
+  const art = '/street-escape/jump-long-road-gap.png';
+  // Split the source at its midpoint so each ledge keeps its original scale.
+  return <>
+    <div className="escape-gap-void" style={{ left: position(collision.x), width: `${(collision.width / VIEW_WIDTH) * 100}%` }} aria-hidden="true" />
+    <img className="escape-obstacle escape-long-jump escape-gap-left" style={{ left: position(collision.x - ROAD_GAP_LEFT_LIP), width: artWidth }} src={art} alt="" />
+    <img className="escape-obstacle escape-long-jump escape-gap-right" style={{ left: position(collision.x + collision.width - ROAD_GAP_RIGHT_LIP), width: artWidth }} src={art} alt="" />
+  </>;
 }
 
-function launchJump(runtime, velocityY, forwardSpeed) {
-  runtime.velocityY = velocityY;
-  runtime.jumpVelocityX = forwardSpeed;
+function createEscapeRuntime() {
+  return {
+    x: STREET_PLAYER_SPAWN, y: 0, jump: null, crouching: false, facing: 'right',
+    guard: { x: null, catches: 0, recovering: false, recoveryUntil: 0 },
+    elapsed: 0, phase: 'running', lastPaint: 0,
+  };
 }
 
 export function StreetEscape({ onExit, alertLevel = 0 }) {
   const routeRef = useRef(createStreetRoute(freshSeed()));
   const runtimeRef = useRef(createEscapeRuntime());
-  const heldRef = useRef({ lastSpaceAt: 0, controlHeld: false, crouchUntil: 0, left: false, right: false });
+  const heldRef = useRef(createHeldInputs());
   const [route, setRoute] = useState(routeRef.current);
   const [view, setView] = useState(() => buildView(routeRef.current, runtimeRef.current));
 
@@ -104,26 +104,22 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
     const nextRoute = createStreetRoute(freshSeed());
     routeRef.current = nextRoute;
     runtimeRef.current = createEscapeRuntime();
-    heldRef.current = { lastSpaceAt: 0, controlHeld: false, crouchUntil: 0, left: false, right: false };
+    heldRef.current = createHeldInputs();
     setRoute(nextRoute);
     setView(buildView(nextRoute, runtimeRef.current));
   }, []);
 
   useEffect(() => {
+    for (const src of [JUMP_PLAYER_ART, CROUCH_PLAYER_ART]) new Image().src = src;
+
     const keyDown = (event) => {
       const runtime = runtimeRef.current;
       if (runtime.phase !== 'running') return;
       if (event.code === 'KeyA') { heldRef.current.left = true; runtime.facing = 'left'; event.preventDefault(); }
       if (event.code === 'KeyD') { heldRef.current.right = true; runtime.facing = 'right'; event.preventDefault(); }
-      if (event.code === 'Space' && !event.repeat) {
-        const now = performance.now();
-        const isDoubleTap = now - heldRef.current.lastSpaceAt <= DOUBLE_TAP_WINDOW;
-        heldRef.current.lastSpaceAt = now;
-        // The first press reacts immediately. A second quick press upgrades
-        // that live jump, so a double tap is still recognized after takeoff.
-        if (isDoubleTap && runtime.y <= 0) launchJump(runtime, BIG_JUMP_VELOCITY, BIG_JUMP_FORWARD_SPEED);
-        else if (runtime.y === 0) launchJump(runtime, SMALL_JUMP_VELOCITY, SMALL_JUMP_FORWARD_SPEED);
+      if (isSpaceInput(event)) {
         event.preventDefault();
+        runtime.jump = jumpOnSpacePress(runtime);
       }
       if (isControlInput(event) && !event.repeat) {
         const now = performance.now();
@@ -136,18 +132,27 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
       }
     };
     const keyUp = (event) => {
-      const runtime = runtimeRef.current;
       if (event.code === 'KeyA') { heldRef.current.left = false; event.preventDefault(); }
       if (event.code === 'KeyD') { heldRef.current.right = false; event.preventDefault(); }
-      if (event.code === 'Space') event.preventDefault();
+      if (isSpaceInput(event)) event.preventDefault();
       if (isControlInput(event)) {
         heldRef.current.controlHeld = false;
         event.preventDefault();
       }
     };
+    const resetHeldInputs = () => {
+      heldRef.current = createHeldInputs();
+      const jump = runtimeRef.current.jump;
+      if (jump) jump.nextJumpQueued = false;
+    };
     window.addEventListener('keydown', keyDown);
     window.addEventListener('keyup', keyUp);
-    return () => { window.removeEventListener('keydown', keyDown); window.removeEventListener('keyup', keyUp); };
+    window.addEventListener('blur', resetHeldInputs);
+    return () => {
+      window.removeEventListener('keydown', keyDown);
+      window.removeEventListener('keyup', keyUp);
+      window.removeEventListener('blur', resetHeldInputs);
+    };
   }, []);
 
   useEffect(() => {
@@ -159,31 +164,45 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
       const delta = Math.min((now - previous) / 1000, .05);
       previous = now;
       if (runtime.phase === 'running') {
-        runtime.crouching = heldRef.current.controlHeld || now < heldRef.current.crouchUntil;
+        const held = heldRef.current;
+        const direction = movementDirection(held);
         runtime.elapsed += delta;
-        const direction = heldRef.current.right ? 1 : heldRef.current.left ? -1 : 0;
-        const jumpBoost = runtime.y < 0 || runtime.velocityY < 0 ? runtime.jumpVelocityX : 0;
-        runtime.x = Math.max(PLAYER_SPAWN, runtime.x + (direction * STREET_SPEED + jumpBoost) * delta);
-        if (!runtime.guardActive && runtime.elapsed >= GUARD_ENTRY_DELAY) {
-          runtime.guardActive = true;
-          runtime.guardX = runtime.x - 500;
+        let groundTime = delta;
+        let airDistance = 0;
+        let nextJumpQueued = false;
+        if (runtime.jump) {
+          const step = advanceStreetJump(runtime.jump, delta, direction);
+          runtime.y = -step.height;
+          airDistance = step.distance;
+          groundTime = step.groundTime;
+          if (step.landed) {
+            nextJumpQueued = runtime.jump.nextJumpQueued;
+            runtime.jump = null;
+          }
         }
-        if (runtime.guardActive) runtime.guardX += GUARD_SPEED * delta;
-        runtime.y += runtime.velocityY * delta;
-        runtime.velocityY += GRAVITY * delta;
-        if (runtime.y >= 0) { runtime.y = 0; runtime.velocityY = 0; runtime.jumpVelocityX = 0; }
-
-        for (const module of activeRoute.modules) {
-          const collision = module.collision;
-          if (!collision || runtime.x < collision.x || runtime.x > collision.x + collision.width) continue;
+        const groundDistance = direction * STREET_SPEED * groundTime;
+        const groundStartX = Math.max(STREET_PLAYER_SPAWN, runtime.x + airDistance);
+        runtime.x = Math.max(STREET_PLAYER_SPAWN, groundStartX + groundDistance);
+        runtime.crouching = !runtime.jump && (held.controlHeld || now < held.crouchUntil);
+        for (const { collision } of activeRoute.modules) {
+          if (collision.kind === 'gap') {
+            if (fallsIntoStreetGap(collision, groundStartX, runtime.x, runtime.jump !== null)) {
+              runtime.phase = 'fell';
+              break;
+            }
+            continue;
+          }
+          if (runtime.x < collision.x || runtime.x > collision.x + collision.width) continue;
           const jumpingHeight = -runtime.y;
-          const cleared = collision.kind === 'barrier' ? jumpingHeight > 50
-            : collision.kind === 'gap' ? jumpingHeight > 90
-              : runtime.crouching;
+          const cleared = collision.kind === 'barrier' ? jumpingHeight > 50 : runtime.crouching;
           if (!cleared) { runtime.phase = 'failed'; break; }
         }
-        if (runtime.guardActive && runtime.guardX >= runtime.x - GUARD_CATCH_DISTANCE) runtime.phase = 'caught';
-        if (runtime.x >= activeRoute.van.triggerX) runtime.phase = 'complete';
+        if (runtime.phase === 'running') {
+          advanceStreetChase(runtime.guard, runtime.x, runtime.elapsed, delta);
+          if (runtime.x >= activeRoute.van.triggerX) runtime.phase = 'complete';
+          else if (runtime.guard.catches > STAGGER_CATCH_LIMIT) runtime.phase = 'caught';
+          else if (nextJumpQueued) runtime.jump = jumpOnSpacePress(runtime);
+        }
       }
       if (now - runtime.lastPaint > 45 || runtime.phase !== 'running') {
         runtime.lastPaint = now;
@@ -196,12 +215,12 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
   }, []);
 
   const playerBottom = 27 + ((-view.y) / VIEW_HEIGHT) * 100;
-  const progress = Math.min(100, Math.max(0, ((view.x - PLAYER_SPAWN) / (route.van.triggerX - PLAYER_SPAWN)) * 100));
+  const progress = Math.min(100, Math.max(0, ((view.x - STREET_PLAYER_SPAWN) / (route.van.triggerX - STREET_PLAYER_SPAWN)) * 100));
   const activeInstruction = view.instruction;
-  const playerArt = view.crouching
-    ? CROUCH_PLAYER_ART
-    : view.y < 0
-      ? JUMP_PLAYER_ART
+  const playerArt = view.y < 0
+    ? JUMP_PLAYER_ART
+    : view.crouching
+      ? CROUCH_PLAYER_ART
       : view.facing === 'left' ? '/assets/player/left.png' : '/assets/player/right.png';
 
   return <main className="escape-app">
@@ -211,21 +230,19 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
       <img className="escape-start" style={{ left: `${((42 - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/start-museum-service-exit.png" alt="博物馆后勤出口" />
 
       {route.modules.map((module) => {
-        const art = obstacleArt[module.type];
         const collision = module.collision;
+        if (collision.kind === 'gap') return <RoadGap key={module.id} collision={collision} camera={view.camera} />;
+
         const visualWidth = artMetrics[module.type]?.width ?? module.width;
-        const visualCenter = collision ? collision.x + collision.width / 2 : module.x + module.width / 2;
-        const left = ((visualCenter - visualWidth / 2 - view.camera) / VIEW_WIDTH) * 100;
+        const visualLeft = collision.x + (collision.width - visualWidth) / 2;
+        const left = ((visualLeft - view.camera) / VIEW_WIDTH) * 100;
         const width = (visualWidth / VIEW_WIDTH) * 100;
-        return <React.Fragment key={module.id}>
-          {collision?.kind === 'gap' && <div className="escape-gap-void" style={{ left: `${((collision.x - view.camera) / VIEW_WIDTH) * 100}%`, width: `${(collision.width / VIEW_WIDTH) * 100}%` }} aria-hidden="true" />}
-          {art && <img className={`escape-obstacle escape-${module.type}`} style={{ left: `${left}%`, width: `${width}%` }} src={art} alt="" />}
-        </React.Fragment>;
+        return <img key={module.id} className={`escape-obstacle escape-${module.type}`} style={{ left: `${left}%`, width: `${width}%` }} src={obstacleArt[module.type]} alt="" />;
       })}
       <img className="escape-van" style={{ left: `${((route.van.x - view.camera) / VIEW_WIDTH) * 100}%`, width: `${(300 / VIEW_WIDTH) * 100}%` }} src="/street-escape/end-getaway-van.png" alt="接应面包车" />
 
       <div
-        className={`escape-player ${view.crouching ? 'crouching' : ''} ${view.y < 0 ? 'jumping' : ''}`}
+        className={`escape-player facing-${view.facing} ${view.crouching ? 'crouching' : ''} ${view.y < 0 ? 'jumping' : ''}`}
         style={{
           left: `${((view.x - view.camera) / VIEW_WIDTH) * 100}%`,
           bottom: `${playerBottom}%`,
@@ -233,7 +250,7 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
       >
         <img src={playerArt} alt="正在逃离的小偷" />
       </div>
-      {view.guardActive && <div className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }}>
+      {view.guardX !== null && <div className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }}>
         <img src="/assets/guard/right.png" alt="正在追赶的保安" />
       </div>}
 
@@ -258,10 +275,10 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
           <button type="button" onClick={onExit}>返回展厅</button>
         </div>
       </header>
-      <p className="escape-objective"><b>A / D</b> 移动　·　<b>Space</b> 起跳 / 双击大跳　·　<b>Ctrl</b> 下蹲　·　{activeInstruction ? moduleLabel[activeInstruction.type] : '接应车就在前方'}</p>
+      <p className="escape-objective"><b>A / D</b> 移动　·　<b>Space</b> 起跳 / 连按大跳　·　<b>Ctrl</b> 下蹲　·　{view.showCatch && <b role="status">警卫追上了，继续跑！　·　</b>}{view.bigJump && <b>大跳已触发　·　</b>}{activeInstruction ? moduleLabel[activeInstruction.type] : '接应车就在前方'}</p>
 
-      {(view.phase === 'failed' || view.phase === 'caught') && <section className="escape-result failure" role="alert">
-        <span>逃脱中断</span><strong>警卫追上来了</strong><p>这条夜路会重新生成。</p><button type="button" onClick={restart}>重新逃脱</button>
+      {(view.phase === 'failed' || view.phase === 'fell' || view.phase === 'caught') && <section className="escape-result failure" role="alert">
+        <span>逃脱中断</span><strong>{view.phase === 'fell' ? '掉进断路了' : view.phase === 'caught' ? '警卫抓住了你' : '撞上障碍了'}</strong><p>这条夜路会重新生成。</p><button type="button" onClick={restart}>重新逃脱</button>
       </section>}
       {view.phase === 'complete' && <section className="escape-result success" role="alert">
         <span>MISSION COMPLETE</span><strong>成功逃离博物馆</strong><p>宝藏已安全装上接应车。</p><button type="button" onClick={restart}>挑战新的逃脱路线</button><button type="button" className="quiet" onClick={onExit}>返回展厅</button>
