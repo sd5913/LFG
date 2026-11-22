@@ -1,27 +1,13 @@
-const GUARD_ENTRY_DELAY = 3;
-const GUARD_SPEED = 198;
-const GUARD_START_DISTANCE = 82;
-const GUARD_CATCH_DISTANCE = 72;
-const GUARD_REARM_DISTANCE = 96;
-const GUARD_RECOVERY_SECONDS = 2.8;
-export const STAGGER_CATCH_LIMIT = 2;
+import { STREET_PLAYER_SPAWN } from './street-route.js';
 
-export function advanceStreetChase(guard, playerX, elapsed, delta) {
-  if (guard.x === null) {
-    if (elapsed < GUARD_ENTRY_DELAY) return;
-    guard.x = playerX - GUARD_START_DISTANCE;
-  }
+const GUARD_ENTRY_DELAY = 5;
+// Keep a clean one-minute run possible despite the guard's higher speed.
+const GUARD_SPEED = 190;
+const GUARD_CATCH_DISTANCE = 60;
+const GUARD_BODY_HEIGHT = 96;
 
-  if (guard.recovering) {
-    if (elapsed < guard.recoveryUntil || playerX - guard.x < GUARD_REARM_DISTANCE) return;
-    guard.recovering = false;
-  }
-
-  const contactX = playerX - GUARD_CATCH_DISTANCE;
-  guard.x = Math.min(guard.x + GUARD_SPEED * delta, contactX);
-  if (guard.x < contactX) return;
-
-  guard.catches += 1;
-  guard.recovering = true;
-  guard.recoveryUntil = elapsed + GUARD_RECOVERY_SECONDS;
+export function advanceStreetChase(guard, playerX, playerHeight, elapsed) {
+  if (elapsed < GUARD_ENTRY_DELAY) return false;
+  guard.x = STREET_PLAYER_SPAWN + (elapsed - GUARD_ENTRY_DELAY) * GUARD_SPEED;
+  return Math.abs(guard.x - playerX) <= GUARD_CATCH_DISTANCE && playerHeight < GUARD_BODY_HEIGHT;
 }

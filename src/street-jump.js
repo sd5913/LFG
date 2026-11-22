@@ -3,6 +3,30 @@ import { SHORT_BARRICADE_ART_WIDTH, STREET_SPEED } from './street-route.js';
 const SMALL_JUMP_DISTANCE = SHORT_BARRICADE_ART_WIDTH * 1.5;
 const SMALL_JUMP_DURATION = SMALL_JUMP_DISTANCE / STREET_SPEED;
 const BIG_JUMP_DURATION = 2.25;
+const CROUCH_TAP_DURATION = 620;
+
+export function pressStreetCrouch(held, jump, now) {
+  held.controlHeld = true;
+  if (jump) {
+    held.crouchOnLanding = true;
+    jump.nextJumpQueued = false;
+  } else {
+    held.crouchUntil = now + CROUCH_TAP_DURATION;
+  }
+}
+
+export function allowsStreetJump(held, repeated) {
+  return !repeated && !held.controlHeld && !held.crouchOnLanding;
+}
+
+export function isStreetCrouching(held, jump, now) {
+  if (jump) return false;
+  if (held.crouchOnLanding) {
+    held.crouchOnLanding = false;
+    held.crouchUntil = now + CROUCH_TAP_DURATION;
+  }
+  return held.controlHeld || now < held.crouchUntil;
+}
 
 function startStreetJump(big, duration, height = 0) {
   return {

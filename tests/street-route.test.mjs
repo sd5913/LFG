@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MODULE_TYPES, SAFE_LEAD_SECONDS, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED, createStreetRoute, fallsIntoStreetGap, validateStreetRoute } from '../src/street-route.js';
-import { advanceStreetJump, jumpOnSpacePress } from '../src/street-jump.js';
+import { advanceStreetJump, allowsStreetJump, isStreetCrouching, jumpOnSpacePress, pressStreetCrouch } from '../src/street-jump.js';
 import { advanceStreetChase } from '../src/street-chase.js';
 
 test('a gap only fails grounded travel or a landing inside its opening', () => {
@@ -75,13 +75,73 @@ test('Space can upgrade a small jump until landing and rapid taps queue only one
   assert.equal(activeJump.nextJumpQueued, true);
 });
 
-test('the slower guard catches a continuous runner twice in one minute', () => {
-  const guard = { x: null, catches: 0, recovering: false, recoveryUntil: 0 };
-  for (let frame = 1; frame <= 60 * 60; frame += 1) {
-    const elapsed = frame / 60;
-    advanceStreetChase(guard, STREET_PLAYER_SPAWN + STREET_SPEED * elapsed, elapsed, 1 / 60);
+test('holding Space counts as one press even after landing', () => {
+  const held = { controlHeld: false, crouchOnLanding: false };
+  const player = { jump: null, y: 0 };
+  const keyDown = (repeated) => {
+    if (allowsStreetJump(held, repeated)) player.jump = jumpOnSpacePress(player);
+  };
+
+  keyDown(false);
+  player.y = -advanceStreetJump(player.jump, .5, 1).height;
+  keyDown(true);
+  assert.equal(player.jump.big, false);
+  assert.equal(advanceStreetJump(player.jump, player.jump.duration, 1).landed, true);
+  player.jump = null;
+  player.y = 0;
+  keyDown(true);
+  assert.equal(player.jump, null);
+
+  keyDown(false);
+  keyDown(false);
+  assert.equal(player.jump.big, true);
+  keyDown(true);
+  assert.equal(player.jump.nextJumpQueued, undefined);
+});
+
+test('a midair crouch tap replaces a queued rebound and takes effect after landing', () => {
+  const held = { controlHeld: false, crouchOnLanding: false, crouchUntil: 0 };
+  const player = { jump: jumpOnSpacePress({ jump: null, y: 0 }), y: 0 };
+  player.jump = jumpOnSpacePress(player);
+  jumpOnSpacePress(player);
+  assert.equal(player.jump.nextJumpQueued, true);
+
+  pressStreetCrouch(held, player.jump, 1000);
+  assert.equal(player.jump.nextJumpQueued, false);
+  assert.equal(allowsStreetJump(held, false), false);
+  held.controlHeld = false;
+  assert.equal(allowsStreetJump(held, true), false);
+  assert.equal(isStreetCrouching(held, player.jump, 1900), false);
+  assert.equal(isStreetCrouching(held, null, 2000), true);
+  assert.equal(isStreetCrouching(held, null, 2619), true);
+  assert.equal(isStreetCrouching(held, null, 2620), false);
+  assert.equal(allowsStreetJump(held, true), false);
+  assert.equal(allowsStreetJump(held, false), true);
+});
+
+test('the guard leaves the shared starting point after five seconds and catches on first contact', () => {
+  const guard = { x: null };
+  const stoppedPlayer = STREET_PLAYER_SPAWN + STREET_SPEED;
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 4.999), false);
+  assert.equal(guard.x, null);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 5), false);
+  assert.equal(guard.x, STREET_PLAYER_SPAWN);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 5.6), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 138, 5.7), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 5.7), true);
+});
+
+test('continuous movement can reach the van before the guard makes contact', () => {
+  for (const seed of [1, 42, 5913, 20261119, 0xffffffff]) {
+    const route = createStreetRoute(seed);
+    const guard = { x: null };
+    const duration = (route.van.triggerX - STREET_PLAYER_SPAWN) / STREET_SPEED;
+    for (let elapsed = 0; elapsed <= duration; elapsed += 1 / 60) {
+      const playerX = STREET_PLAYER_SPAWN + STREET_SPEED * elapsed;
+      assert.equal(advanceStreetChase(guard, playerX, 0, elapsed), false);
+    }
+    assert.equal(advanceStreetChase(guard, route.van.triggerX, 0, duration), false);
   }
-  assert.equal(guard.catches, 2);
 });
 
 test('air movement follows A/D at the ground speed and small jump range remains 1.5 barriers', () => {
