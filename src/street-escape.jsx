@@ -204,8 +204,10 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
         }
         if (runtime.phase === 'running') {
           const caught = advanceStreetChase(runtime.guard, runtime.x, -runtime.y, runtime.elapsed);
-          if (caught) runtime.phase = 'caught';
-          else if (runtime.x >= activeRoute.van.triggerX) runtime.phase = 'complete';
+          if (caught) {
+            runtime.phase = 'caught';
+            window.location.assign('./rock-paper-scissors-demo/index.html');
+          } else if (runtime.x >= activeRoute.van.triggerX) runtime.phase = 'complete';
           else if (nextJumpQueued && !runtime.crouching) runtime.jump = jumpOnSpacePress(runtime);
         }
       }
