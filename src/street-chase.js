@@ -1,8 +1,8 @@
 import { STREET_PLAYER_SPAWN } from './street-route.js';
 
-const GUARD_ENTRY_DELAY = 5;
-// Keep a clean one-minute run possible despite the guard's higher speed.
-const GUARD_SPEED = 190;
+const GUARD_ENTRY_DELAY = 3;
+// Keep the pace above the player's while leaving time to reach the van.
+const GUARD_SPEED = 187;
 const GUARD_CATCH_DISTANCE = 60;
 const GUARD_BODY_HEIGHT = 96;
 

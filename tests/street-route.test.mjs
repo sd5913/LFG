@@ -119,16 +119,16 @@ test('a midair crouch tap replaces a queued rebound and takes effect after landi
   assert.equal(allowsStreetJump(held, false), true);
 });
 
-test('the guard leaves the shared starting point after five seconds and catches on first contact', () => {
+test('the guard leaves the shared starting point after three seconds and catches on first contact', () => {
   const guard = { x: null };
   const stoppedPlayer = STREET_PLAYER_SPAWN + STREET_SPEED;
-  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 4.999), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 2.999), false);
   assert.equal(guard.x, null);
-  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 5), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3), false);
   assert.equal(guard.x, STREET_PLAYER_SPAWN);
-  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 5.6), false);
-  assert.equal(advanceStreetChase(guard, stoppedPlayer, 138, 5.7), false);
-  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 5.7), true);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3.6), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 138, 3.7), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3.7), true);
 });
 
 test('continuous movement can reach the van before the guard makes contact', () => {
