@@ -143,7 +143,11 @@ function App() {
     <section className="game-over-panel" role="alert"><span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button></section>
   </section></main>;
 
-  if (streetEscapeActive) return <StreetEscape alertLevel={resumeState?.alertLevel ?? 0} onExit={() => setStreetEscapeActive(false)} />;
+  if (streetEscapeActive) return <StreetEscape
+    cameraStream={cameraStreamRef.current}
+    alertLevel={resumeState?.alertLevel ?? 0}
+    onExit={() => setStreetEscapeActive(false)}
+  />;
 
   if (activeExhibitId) return <PoseShadowDemo
     exhibitId={activeExhibitId}
