@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MODULE_TYPES, SAFE_LEAD_SECONDS, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED, createStreetRoute, fallsIntoStreetGap, validateStreetRoute } from '../src/street-route.js';
 import { advanceStreetJump, allowsStreetJump, isStreetCrouching, jumpOnSpacePress, pressStreetCrouch } from '../src/street-jump.js';
-import { advanceStreetChase, advanceStreetPursuit, recoverFromStreetObstacle, settleStreetChallenge, stunStreetGuard } from '../src/street-chase.js';
+import { advanceStreetChase, advanceStreetPursuit, createStreetGuard, recoverFromStreetObstacle, settleStreetChallenge, stunStreetGuard } from '../src/street-chase.js';
 
 test('a gap only fails grounded travel or a landing inside its opening', () => {
   const { collision: gap } = createStreetRoute(1).modules.find(({ type }) => type === MODULE_TYPES.LONG_JUMP);
@@ -119,20 +119,22 @@ test('a midair crouch tap replaces a queued rebound and takes effect after landi
   assert.equal(allowsStreetJump(held, false), true);
 });
 
+const chaseRoute = createStreetRoute(1);
+
 test('the guard leaves the shared starting point after three seconds and catches on first contact', () => {
-  const guard = { x: null };
+  const guard = createStreetGuard(chaseRoute);
   const stoppedPlayer = STREET_PLAYER_SPAWN + STREET_SPEED;
   assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 2.999), false);
   assert.equal(guard.x, null);
   assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3), false);
   assert.equal(guard.x, STREET_PLAYER_SPAWN);
-  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3.6), false);
+  assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3.5), false);
   assert.equal(advanceStreetChase(guard, stoppedPlayer, 138, 3.7), false);
   assert.equal(advanceStreetChase(guard, stoppedPlayer, 0, 3.7), true);
 });
 
 test('a challenge win freezes the guard for three seconds, then resumes pursuit from the same spot', () => {
-  const guard = { x: null };
+  const guard = createStreetGuard(chaseRoute);
   const playerX = STREET_PLAYER_SPAWN + STREET_SPEED;
   assert.equal(advanceStreetChase(guard, playerX, 0, 4), true);
   const catchX = guard.x;
@@ -178,7 +180,7 @@ test('a challenge loss adds 50 alert points and only arrests at a full meter', (
 test('after an obstacle hit, the guard runs to the player and waits at contact until recovery ends', () => {
   const x = STREET_PLAYER_SPAWN + 260;
   const obstacle = { kind: 'barrier', x, width: 54 };
-  const runtime = { x, y: -20, jump: {}, phase: 'running', alertLevel: 0, elapsed: 3.5, guard: { x: null } };
+  const runtime = { x, y: -20, jump: {}, phase: 'running', alertLevel: 0, elapsed: 3.5, guard: createStreetGuard(chaseRoute) };
   recoverFromStreetObstacle(runtime, obstacle);
   assert.equal(runtime.phase, 'recovering');
   assert.equal(runtime.alertLevel, 30);
@@ -220,14 +222,14 @@ test('after an obstacle hit, the guard runs to the player and waits at contact u
   assert.equal(runtime.guard.x, contactX);
   runtime.elapsed = 8.6;
   advanceStreetPursuit(runtime);
-  assert.ok(runtime.guard.x > contactX && runtime.guard.x < contactX + 20);
+  assert.ok(Math.abs(runtime.guard.x - contactX - runtime.guard.speed * .1) < 1e-9);
   assert.equal(runtime.phase, 'running');
 });
 
 test('obstacle recovery finishes before returning to the run or arresting a player at full alert', () => {
   for (const [initialAlert, expectedAlert, expectedPhase] of [[50, 80, 'running'], [80, 100, 'arrested']]) {
     const x = STREET_PLAYER_SPAWN + 900;
-    const runtime = { x, y: 0, phase: 'running', alertLevel: initialAlert, elapsed: 3, guard: { x: null } };
+    const runtime = { x, y: 0, phase: 'running', alertLevel: initialAlert, elapsed: 3, guard: createStreetGuard(chaseRoute) };
     recoverFromStreetObstacle(runtime, { kind: 'awning', x, width: 100 });
     assert.equal(runtime.alertLevel, expectedAlert);
     runtime.elapsed = 4.999;
@@ -239,16 +241,31 @@ test('obstacle recovery finishes before returning to the run or arresting a play
   }
 });
 
-test('continuous movement can reach the van before the guard makes contact', () => {
+test('the guard catches a full-speed run by halfway even during a high jump', () => {
   for (const seed of [1, 42, 5913, 20261119, 0xffffffff]) {
     const route = createStreetRoute(seed);
-    const guard = { x: null };
     const duration = (route.van.triggerX - STREET_PLAYER_SPAWN) / STREET_SPEED;
-    for (let elapsed = 0; elapsed <= duration; elapsed += 1 / 60) {
-      const playerX = STREET_PLAYER_SPAWN + STREET_SPEED * elapsed;
-      assert.equal(advanceStreetChase(guard, playerX, 0, elapsed), false);
+    for (const step of [1 / 120, 1 / 60, .05]) {
+      for (const jumpAtContact of [false, true]) {
+        const guard = createStreetGuard(route);
+        const startJumpAt = duration * .45 - 1;
+        let jump;
+        let caughtAt;
+        for (let elapsed = 0; elapsed <= duration / 2; elapsed += step) {
+          const playerX = STREET_PLAYER_SPAWN + STREET_SPEED * elapsed;
+          if (jumpAtContact && !jump && elapsed >= startJumpAt) {
+            jump = jumpOnSpacePress({ jump: jumpOnSpacePress({ jump: null, y: 0 }), y: 0 });
+          }
+          const height = jump ? advanceStreetJump(jump, step, 1).height : 0;
+          if (advanceStreetChase(guard, playerX, height, elapsed)) {
+            caughtAt = elapsed / duration;
+            break;
+          }
+        }
+        assert.ok(caughtAt >= .44 && caughtAt <= .5, `seed ${seed}, jump ${jumpAtContact}, catch ${caughtAt}`);
+        assert.ok(jumpAtContact ? caughtAt > .45 : caughtAt < .46);
+      }
     }
-    assert.equal(advanceStreetChase(guard, route.van.triggerX, 0, duration), false);
   }
 });
 

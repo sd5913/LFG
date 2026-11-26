@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, GUARD, GUARD_ART, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
+import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, GUARD, GUARD_ART, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLAYER_JUMP_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
 import { KEY_DIRECTIONS, movementIntent } from './movement.js';
 import { plantPixels } from './plant-foreground.js';
 import { sceneryPixels, opaqueRectangles } from './scenery-foreground.js';
@@ -30,6 +30,7 @@ export default class Room1 extends Phaser.Scene {
     for (const [direction, art] of Object.entries(PLAYER_ART)) {
       this.load.image(`source-${direction}`, base + art.file);
     }
+    this.load.image('player-entrance-jump', base + PLAYER_JUMP_ART.file);
     for (const [direction, art] of Object.entries(GUARD_ART)) this.load.image(`guard-source-${direction}`, base + art.file);
     this.load.on('loaderror', file => this.failedAssets.push(file.key));
   }
@@ -92,7 +93,7 @@ export default class Room1 extends Phaser.Scene {
     if (canResume && PLAYER_ART[this.resumeState.facing]) this.facing = this.resumeState.facing;
     const playerStart = canResume ? this.resumeState : PLAYER.spawn;
     this.player = this.physics.add.sprite(playerStart.x, playerStart.y, `player-${this.facing}`)
-      .setOrigin(0.5, 1).setCollideWorldBounds(true);
+      .setOrigin(0.5, 1).setDepth(playerStart.y).setCollideWorldBounds(true);
     this.player.body.setSize(PLAYER.bodyWidth, PLAYER.bodyHeight, false)
       .setOffset((PLAYER.textureSize - PLAYER.bodyWidth) / 2, PLAYER.textureSize - PLAYER.bodyHeight);
     this.player.body.setAllowGravity(false);
@@ -100,9 +101,51 @@ export default class Room1 extends Phaser.Scene {
     this.collider = this.physics.add.collider(this.player, this.blockers);
     this.createGuard();
     this.debugGraphics = this.add.graphics().setDepth(20000);
+    if (!canResume) this.playEntrance();
     this.installInput();
     this.publish({ ready: true, error: '', facing: this.facing, moving: false, debug: false,
       hiddenExhibitId: null, nearTreasure: false, treasureUnlocked: this.treasureUnlocked, alertLevel: this.alertLevel, gameOver: false });
+  }
+
+  playEntrance() {
+    const { x, y } = this.player;
+    const { bounds } = PLAYER_ART[this.facing];
+    const playerWidth = bounds[2] * PLAYER.artHeight / bounds[3];
+    const portalY = y - PLAYER.artHeight - 130;
+    const portal = this.add.ellipse(x, portalY, playerWidth * 1.5, playerWidth * .32, 0x000000)
+      .setScale(.12, .06).setDepth(19999);
+    const jump = this.textures.get('player-entrance-jump');
+    jump.add('visible-art', 0, ...PLAYER_JUMP_ART.bounds);
+    const [, , jumpWidth, jumpHeight] = PLAYER_JUMP_ART.bounds;
+    const fallingPlayer = this.add.image(x, portalY, jump, 'visible-art').setOrigin(.5, 1)
+      .setDisplaySize(playerWidth, playerWidth * jumpHeight / jumpWidth).setDepth(19998);
+    const opening = this.make.graphics({ x: 0, y: 0 }, false);
+    opening.fillStyle(0xffffff).fillRect(0, portalY, GAME.width, GAME.height - portalY);
+    fallingPlayer.setMask(opening.createGeometryMask());
+
+    const removeFallingPlayer = () => {
+      fallingPlayer.clearMask(true);
+      fallingPlayer.destroy();
+      opening.destroy();
+    };
+    this.events.once('shutdown', removeFallingPlayer);
+    this.enteringGallery = true;
+    this.player.setVisible(false);
+    this.tweens.chain({
+      tweens: [
+        { targets: portal, scaleX: 1, scaleY: 1, duration: 180, ease: 'Sine.Out' },
+        { targets: fallingPlayer, y, duration: 560, ease: 'Quad.In', onComplete: () => {
+          this.events.off('shutdown', removeFallingPlayer);
+          removeFallingPlayer();
+          this.player.setVisible(true);
+        } },
+        { targets: portal, alpha: 0, duration: 480, ease: 'Sine.InOut' },
+      ],
+      onComplete: () => {
+        portal.destroy();
+        this.enteringGallery = false;
+      },
+    });
   }
 
   createTextures() {
@@ -254,7 +297,7 @@ export default class Room1 extends Phaser.Scene {
     this.guardFacing = GUARD_ART[saved?.facing] ? saved.facing : GUARD.initialFacing;
     const start = saved ?? GUARD.spawn;
     this.guard = this.physics.add.sprite(start.x, start.y, `guard-${this.guardFacing}`).setOrigin(0.5, 1)
-      .setCollideWorldBounds(true).setPushable(false);
+      .setDepth(start.y).setCollideWorldBounds(true).setPushable(false);
     this.guard.body.setSize(GUARD.bodyWidth, GUARD.bodyHeight, false)
       .setOffset((GUARD.textureSize - GUARD.bodyWidth) / 2, GUARD.textureSize - GUARD.bodyHeight);
     this.guard.body.setAllowGravity(false);
@@ -378,7 +421,7 @@ export default class Room1 extends Phaser.Scene {
   }
 
   resetPlayer() {
-    if (!this.player) return;
+    if (!this.player || this.enteringGallery) return;
     this.clearInput();
     this.player.body.reset(PLAYER.spawn.x, PLAYER.spawn.y);
     this.facing = PLAYER.initialFacing;
@@ -406,7 +449,7 @@ export default class Room1 extends Phaser.Scene {
   }
 
   update(time, delta) {
-    if (!this.player || this.gameOver) return;
+    if (!this.player || this.gameOver || this.enteringGallery) return;
     const input = movementIntent(this.pressed, this.pressOrder, PLAYER.speed, this.facing);
     this.player.setVelocity(input.vx, input.vy);
     if (input.facing !== this.facing) {

@@ -33,6 +33,10 @@ export const PLAYER_ART = Object.freeze({
   right: { file: 'assets/player/right.png', bounds: [103, 65, 398, 468], footX: 314 },
 });
 
+export const PLAYER_JUMP_ART = Object.freeze({
+  file: 'assets/player-actions/jump.png', bounds: [362, 270, 1882, 1822],
+});
+
 export const GUARD = Object.freeze({
   speed: PLAYER.speed * 1.3, textureSize: 144, artHeight: 138, bodyWidth: 34, bodyHeight: 20,
   spawn: Object.freeze(roomPoint(1270, 560)), initialFacing: 'left',

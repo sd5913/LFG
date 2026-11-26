@@ -1,8 +1,6 @@
-import { STREET_PLAYER_SPAWN } from './street-route.js';
+import { STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
 
 const GUARD_ENTRY_DELAY = 3;
-// Keep the pace above the player's while leaving time to reach the van.
-const GUARD_SPEED = 187;
 const GUARD_CATCH_DISTANCE = 60;
 const GUARD_BODY_HEIGHT = 96;
 const GUARD_STUN_SECONDS = 3;
@@ -10,6 +8,14 @@ export const STREET_MAX_ALERT = 100;
 const CHALLENGE_LOSS_ALERT = 50;
 const OBSTACLE_HIT_ALERT = 30;
 const OBSTACLE_RECOVERY_SECONDS = 2;
+
+export function createStreetGuard(route) {
+  // Get within reach around 45% of the route at full speed, leaving room for an airborne thief to land by halfway.
+  const approachDistance = (route.van.triggerX - STREET_PLAYER_SPAWN) * .45;
+  const approachTime = approachDistance / STREET_SPEED;
+  const speed = (approachDistance - GUARD_CATCH_DISTANCE) / (approachTime - GUARD_ENTRY_DELAY);
+  return { x: null, speed };
+}
 
 function raiseStreetAlert(runtime, amount) {
   runtime.alertLevel = Math.min(STREET_MAX_ALERT, runtime.alertLevel + amount);
@@ -41,15 +47,15 @@ export function advanceStreetChase(guard, playerX, playerHeight, elapsed, waitAt
   if (elapsed < moveFrom) return false;
 
   const fromX = guard.x ?? STREET_PLAYER_SPAWN;
-  const nextX = fromX + (elapsed - moveFrom) * GUARD_SPEED;
+  const nextX = fromX + (elapsed - moveFrom) * guard.speed;
   const nearEdge = playerX - GUARD_CATCH_DISTANCE;
   const farEdge = playerX + GUARD_CATCH_DISTANCE;
   guard.lastUpdated = elapsed;
 
-  if (waitAtContact && fromX <= farEdge && nextX >= nearEdge) {
-    // Stay beside the player until the recovery animation is over.
+  if ((waitAtContact || playerHeight >= GUARD_BODY_HEIGHT) && fromX <= farEdge && nextX >= nearEdge) {
+    // Stay in reach during recovery or a high jump instead of running past the thief.
     guard.x = Math.max(fromX, nearEdge);
-    return true;
+    return waitAtContact;
   }
 
   guard.x = nextX;

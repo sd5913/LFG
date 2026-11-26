@@ -5,7 +5,7 @@ import { useFrameLanguage, useGameText } from './use-game-language.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createStreetRoute, fallsIntoStreetGap, MODULE_TYPES, ROAD_GAP_ART_WIDTH, ROAD_GAP_LEFT_LIP, ROAD_GAP_RIGHT_LIP, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
 import { advanceStreetJump, allowsStreetJump, isStreetCrouching, jumpOnSpacePress, pressStreetCrouch } from './street-jump.js';
-import { advanceStreetPursuit, recoverFromStreetObstacle, settleStreetChallenge, STREET_MAX_ALERT } from './street-chase.js';
+import { advanceStreetPursuit, createStreetGuard, recoverFromStreetObstacle, settleStreetChallenge, STREET_MAX_ALERT } from './street-chase.js';
 
 const VIEW_WIDTH = 1600;
 const VIEW_HEIGHT = 900;
@@ -108,11 +108,11 @@ function RoadGap({ collision, camera }) {
   </>;
 }
 
-function createEscapeRuntime(initialAlertLevel) {
+function createEscapeRuntime(initialAlertLevel, route) {
   const alertLevel = Math.min(STREET_MAX_ALERT, Math.max(0, initialAlertLevel));
   return {
     x: STREET_PLAYER_SPAWN, y: 0, jump: null, crouching: false, facing: 'right',
-    guard: { x: null },
+    guard: createStreetGuard(route),
     alertLevel, lastChallengeOutcome: null,
     hitObstacle: null, recoveryUntil: 0,
     elapsed: 0, phase: alertLevel === STREET_MAX_ALERT ? 'arrested' : 'running', lastPaint: 0,
@@ -121,15 +121,16 @@ function createEscapeRuntime(initialAlertLevel) {
 
 export function StreetEscape({ onExit, alertLevel = 0 }) {
   const t = useGameText();
-  const routeRef = useRef(createStreetRoute(freshSeed()));
-  const runtimeRef = useRef(createEscapeRuntime(alertLevel));
+  const [route, setRoute] = useState(() => createStreetRoute(freshSeed()));
+  const routeRef = useRef(route);
+  const runtimeRef = useRef(null);
+  runtimeRef.current ??= createEscapeRuntime(alertLevel, routeRef.current);
   const heldRef = useRef(createHeldInputs());
   const challengeRef = useRef(null);
   const syncChallengeLanguage = useFrameLanguage(challengeRef);
   const stageRef = useRef(null);
   const { status: cameraStatus } = useGameCamera();
   const cameraRequestingRef = useRef(false);
-  const [route, setRoute] = useState(routeRef.current);
   const [view, setView] = useState(() => buildView(routeRef.current, runtimeRef.current));
   const inChallenge = view.phase === 'challenge';
   const syncChallengeCamera = useFrameCamera(challengeRef, inChallenge);
@@ -142,7 +143,7 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
   const restart = useCallback(() => {
     const nextRoute = createStreetRoute(freshSeed());
     routeRef.current = nextRoute;
-    runtimeRef.current = createEscapeRuntime(alertLevel);
+    runtimeRef.current = createEscapeRuntime(alertLevel, nextRoute);
     heldRef.current = createHeldInputs();
     setRoute(nextRoute);
     setView(buildView(nextRoute, runtimeRef.current));
