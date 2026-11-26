@@ -1,3 +1,4 @@
+import { publicAsset } from './public-asset.js';
 import { useFrameLanguage, useGameText } from './use-game-language.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createStreetRoute, fallsIntoStreetGap, MODULE_TYPES, ROAD_GAP_ART_WIDTH, ROAD_GAP_LEFT_LIP, ROAD_GAP_RIGHT_LIP, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
@@ -20,8 +21,8 @@ const PLAYER_LOCK_SCREEN_X = VIEW_WIDTH / 3;
 const isControlInput = (event) => event.key === 'Control' || event.code === 'Control' || event.code === 'ControlLeft' || event.code === 'ControlRight';
 // These are deliberately named after the supplied action references:
 // attachment one = Space jump, attachment two = Control crouch.
-const JUMP_PLAYER_ART = '/assets/player-actions/jump.png';
-const CROUCH_PLAYER_ART = '/assets/player-actions/crouch.png';
+const JUMP_PLAYER_ART = publicAsset('assets/player-actions/jump.png');
+const CROUCH_PLAYER_ART = publicAsset('assets/player-actions/crouch.png');
 const movementDirection = ({ left, right }) => Number(right) - Number(left);
 const isSpaceInput = ({ code, key }) => code === 'Space' || key === ' ';
 const hasLiveVideo = (stream) => stream?.getVideoTracks().some((track) => track.readyState === 'live');
@@ -39,9 +40,9 @@ const moduleLabel = {
 
 // Measure the PNG padding below each solid base separately from its collision.
 const obstacleArt = {
-  [MODULE_TYPES.SHORT_JUMP]: { src: '/street-escape/jump-short-barricade.png', width: SHORT_BARRICADE_ART_WIDTH, sourceWidth: 1536, bottomPadding: 249 },
-  [MODULE_TYPES.SHORT_CROUCH]: { src: '/street-escape/crouch-short-awning.png', width: 224, sourceWidth: 1536, bottomPadding: 218 },
-  [MODULE_TYPES.LONG_CROUCH]: { src: '/street-escape/crouch-long-scaffold.png', width: 550, sourceWidth: 2172, bottomPadding: 196 },
+  [MODULE_TYPES.SHORT_JUMP]: { src: publicAsset('street-escape/jump-short-barricade.png'), width: SHORT_BARRICADE_ART_WIDTH, sourceWidth: 1536, bottomPadding: 249 },
+  [MODULE_TYPES.SHORT_CROUCH]: { src: publicAsset('street-escape/crouch-short-awning.png'), width: 224, sourceWidth: 1536, bottomPadding: 218 },
+  [MODULE_TYPES.LONG_CROUCH]: { src: publicAsset('street-escape/crouch-long-scaffold.png'), width: 550, sourceWidth: 2172, bottomPadding: 196 },
 };
 
 function groundedArtStyle({ width, sourceWidth, bottomPadding }) {
@@ -96,7 +97,7 @@ function RoadGap({ collision, camera }) {
     width: `${(ROAD_GAP_ART_WIDTH / VIEW_WIDTH) * 100}%`,
     top: `calc(var(--road-top) - ${(ROAD_TILE_SOURCE_TOP * ROAD_TILE_SCALE / VIEW_HEIGHT) * 100}%)`,
   };
-  const art = '/street-escape/jump-long-road-gap.png';
+  const art = publicAsset('street-escape/jump-long-road-gap.png');
   // Align the ledges to the tile's source row. The road tiles extend up to the
   // warning posts, and the clipped artwork supplies the posts and broken edges.
   return <>
@@ -341,13 +342,13 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
     ? JUMP_PLAYER_ART
     : view.crouching
       ? CROUCH_PLAYER_ART
-      : view.facing === 'left' ? '/assets/player/left.png' : '/assets/player/right.png';
+      : view.facing === 'left' ? publicAsset('assets/player/left.png') : publicAsset('assets/player/right.png');
 
   const scene = inChallenge ? (
     <iframe
       ref={challengeRef}
       className="escape-guard-challenge"
-      src="./rock-paper-scissors-demo/index.html"
+      src={publicAsset('rock-paper-scissors-demo/index.html')}
       title={t('保安追击 · 三回合石头剪刀布', 'Guard chase · Three rounds of rock, paper, scissors')}
       onLoad={(event) => {
         const frame = event.currentTarget;
@@ -367,7 +368,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
         backgroundSize: `${(ROAD_TILE_WIDTH / VIEW_WIDTH) * 100}% 100%`,
         backgroundPositionX: `${roadOffset}%`,
       }} aria-hidden="true" />
-      <img className="escape-start" style={{ ...START_ART_STYLE, left: `${((42 - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/start-museum-service-exit.png" alt={t('博物馆后勤出口', 'Museum service exit')} />
+      <img className="escape-start" style={{ ...START_ART_STYLE, left: `${((42 - view.camera) / VIEW_WIDTH) * 100}%` }} src={publicAsset('street-escape/start-museum-service-exit.png')} alt={t('博物馆后勤出口', 'Museum service exit')} />
 
       {route.modules.map((module) => {
         const collision = module.collision;
@@ -378,7 +379,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
         const left = ((visualLeft - view.camera) / VIEW_WIDTH) * 100;
         return <img key={module.id} className="escape-obstacle" style={{ ...groundedArtStyle(art), left: `${left}%` }} src={art.src} alt="" />;
       })}
-      <img className="escape-van" style={{ ...VAN_ART_STYLE, left: `${((route.van.x - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/end-getaway-van.png" alt={t('接应面包车', 'Getaway van')} />
+      <img className="escape-van" style={{ ...VAN_ART_STYLE, left: `${((route.van.x - view.camera) / VIEW_WIDTH) * 100}%` }} src={publicAsset('street-escape/end-getaway-van.png')} alt={t('接应面包车', 'Getaway van')} />
 
       <div
         className={`escape-player facing-${view.facing} ${view.crouching ? 'crouching' : ''} ${view.y < 0 ? 'jumping' : ''} ${recovering ? 'recovering' : ''}`}
@@ -389,29 +390,29 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
       >
         <img src={playerArt} alt={t('正在逃离的小偷', 'Thief on the run')} />
       </div>
-      {view.guardX !== null && <img className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }} src="/assets/guard/right.png" alt={t('正在追赶的保安', 'Guard in pursuit')} />}
+      {view.guardX !== null && <img className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }} src={publicAsset('assets/guard/right.png')} alt={t('正在追赶的保安', 'Guard in pursuit')} />}
 
       <header className="escape-top-hud" aria-label={t('逃脱状态栏', 'Escape HUD')}>
-        <img className="escape-top-hud-background" src="/stealth-ui/top_hud_background.png" alt="" />
+        <img className="escape-top-hud-background" src={publicAsset('stealth-ui/top_hud_background.png')} alt="" />
         <div className="escape-alert">
-          <img className="escape-siren" src="/stealth-ui/alarm_siren.png" alt="" />
+          <img className="escape-siren" src={publicAsset('stealth-ui/alarm_siren.png')} alt="" />
           <div className="escape-meter" role="meter" aria-label={t('警戒', 'Alert')} aria-valuemin={0} aria-valuemax={STREET_MAX_ALERT} aria-valuenow={view.alertLevel}>
-            <img src="/stealth-ui/alarm_meter_frame.png" alt="" />
-            <img className="escape-meter-fill" style={{ clipPath: `inset(0 ${STREET_MAX_ALERT - view.alertLevel}% 0 0)` }} src="/stealth-ui/alarm_meter_fill_segments.png" alt="" />
+            <img src={publicAsset('stealth-ui/alarm_meter_frame.png')} alt="" />
+            <img className="escape-meter-fill" style={{ clipPath: `inset(0 ${STREET_MAX_ALERT - view.alertLevel}% 0 0)` }} src={publicAsset('stealth-ui/alarm_meter_fill_segments.png')} alt="" />
           </div>
         </div>
         <div className="escape-route-hud">
-          <img className="escape-route-player" src="/stealth-ui/player_marker.png" alt={t('小偷', 'Thief')} />
+          <img className="escape-route-player" src={publicAsset('stealth-ui/player_marker.png')} alt={t('小偷', 'Thief')} />
           <div className="escape-route-line" role="progressbar" aria-label={t('逃离进度', 'Escape progress')} aria-valuenow={Math.round(progress)}>
             <span className="escape-route-fill" style={{ width: `${progress}%` }} />
             {ROUTE_CHECKPOINTS.map((checkpoint) => (
               <i key={checkpoint} className={progress >= checkpoint ? 'reached' : undefined} style={{ left: `${checkpoint}%` }} />
             ))}
           </div>
-          <img className="escape-route-van" src="/street-escape/end-getaway-van.png" alt={t('接应车', 'Getaway van')} />
+          <img className="escape-route-van" src={publicAsset('street-escape/end-getaway-van.png')} alt={t('接应车', 'Getaway van')} />
         </div>
         <div className="escape-loot-hud">
-          <img src="/stealth-ui/treasure_chest.png" alt={t('已取得的宝藏', 'Stolen treasure')} />
+          <img src={publicAsset('stealth-ui/treasure_chest.png')} alt={t('已取得的宝藏', 'Stolen treasure')} />
           <span><b>{Math.round(progress)}%</b><small>{formatClock(view.elapsed)}</small></span>
           <button type="button" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>
         </div>

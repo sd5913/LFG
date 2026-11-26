@@ -1,3 +1,4 @@
+import { publicAsset } from './public-asset.js';
 import { useGameText } from './use-game-language.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { analyzeHand, GESTURES, HAND_EDGES } from './hand-gestures.js';
@@ -7,7 +8,7 @@ const TASKS_VERSION = '0.10.14';
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`;
 const WASM_ROOT = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}/wasm`;
 const HAND_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-const ASSET_ROOT = '/unlock-ui';
+const ASSET_ROOT = publicAsset('unlock-ui');
 const CARD_ASSETS = ['gesture_step_01_index', 'gesture_step_02_pinch', 'gesture_step_03_fist', 'gesture_step_04_side_fist'];
 const TARGET_ASSETS = ['gesture_index_gold.png', 'gesture_pinch_gold.png', 'gesture_fist_gold.png', 'gesture_side_fist_gold.png'];
 const CARD_LEFTS = [20.82, 38.3, 55.3, 70.92];
@@ -40,13 +41,13 @@ function ChestUnlockSequence({ phase }) {
   return <section className={`unlock-chest-sequence ${phase}`} aria-live="polite" aria-label={phase === 'animation' ? t('宝箱开启中', 'Opening the chest') : t('偷取宝藏成功', 'Treasure secured')}>
     <span className="unlock-alert-paused">{t('警戒已暂停', 'Alert paused')}</span>
     <div className="unlock-chest-animation" aria-hidden="true">
-      <img className="unlock-chest-closed" src="/unlock-animation/chest_closed.png" alt="" />
-      <img className="unlock-chest-open" src="/unlock-animation/chest_open.png" alt="" />
-      <div className="unlock-chest-lid"><img src="/unlock-animation/chest_closed.png" alt="" /></div>
+      <img className="unlock-chest-closed" src={publicAsset('unlock-animation/chest_closed.png')} alt="" />
+      <img className="unlock-chest-open" src={publicAsset('unlock-animation/chest_open.png')} alt="" />
+      <div className="unlock-chest-lid"><img src={publicAsset('unlock-animation/chest_closed.png')} alt="" /></div>
       <div className="unlock-chest-dial">
-        <img className="unlock-chest-rotor" src="/unlock-animation/dial_rotor.png" alt="" />
-        <img className="unlock-chest-hub" src="/unlock-animation/dial_hub.png" alt="" />
-        <img className="unlock-chest-pointer" src="/unlock-animation/dial_pointer.png" alt="" />
+        <img className="unlock-chest-rotor" src={publicAsset('unlock-animation/dial_rotor.png')} alt="" />
+        <img className="unlock-chest-hub" src={publicAsset('unlock-animation/dial_hub.png')} alt="" />
+        <img className="unlock-chest-pointer" src={publicAsset('unlock-animation/dial_pointer.png')} alt="" />
       </div>
     </div>
     {phase === 'success' && <section className="unlock-success-card" role="status">
