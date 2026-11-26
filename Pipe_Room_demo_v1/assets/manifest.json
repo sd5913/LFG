@@ -1,0 +1,192 @@
+{
+  "canvas": {
+    "width": 1671,
+    "height": 941
+  },
+  "sprites": [
+    {
+      "file": "pipes/pipe_top_left_curve.png",
+      "original_x": 152,
+      "original_y": 191,
+      "width": 118,
+      "height": 314,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_top_straight_01.png",
+      "original_x": 294,
+      "original_y": 193,
+      "width": 198,
+      "height": 92,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_top_straight_02.png",
+      "original_x": 480,
+      "original_y": 193,
+      "width": 335,
+      "height": 92,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_top_hazard_joint.png",
+      "original_x": 808,
+      "original_y": 193,
+      "width": 101,
+      "height": 92,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_top_straight_03.png",
+      "original_x": 905,
+      "original_y": 193,
+      "width": 303,
+      "height": 92,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_top_right_curve.png",
+      "original_x": 1402,
+      "original_y": 190,
+      "width": 189,
+      "height": 184,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_right_vertical.png",
+      "original_x": 1487,
+      "original_y": 341,
+      "width": 104,
+      "height": 359,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_mid_left_curve.png",
+      "original_x": 154,
+      "original_y": 333,
+      "width": 116,
+      "height": 180,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_mid_straight_01.png",
+      "original_x": 423,
+      "original_y": 436,
+      "width": 350,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_mid_hazard_joint.png",
+      "original_x": 763,
+      "original_y": 436,
+      "width": 109,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_mid_straight_02.png",
+      "original_x": 865,
+      "original_y": 436,
+      "width": 282,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_mid_right_curve.png",
+      "original_x": 1137,
+      "original_y": 432,
+      "width": 180,
+      "height": 93,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_ladder_vertical_shaft.png",
+      "original_x": 1217,
+      "original_y": 517,
+      "width": 99,
+      "height": 262,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_bottom_straight_01.png",
+      "original_x": 165,
+      "original_y": 786,
+      "width": 156,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_bottom_straight_02.png",
+      "original_x": 310,
+      "original_y": 786,
+      "width": 394,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_bottom_hazard_joint.png",
+      "original_x": 696,
+      "original_y": 786,
+      "width": 122,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_bottom_straight_03.png",
+      "original_x": 808,
+      "original_y": 786,
+      "width": 386,
+      "height": 84,
+      "alpha": true
+    },
+    {
+      "file": "pipes/pipe_bottom_right_curve.png",
+      "original_x": 1176,
+      "original_y": 735,
+      "width": 140,
+      "height": 135,
+      "alpha": true
+    },
+    {
+      "file": "interactables/diversion_valve_left.png",
+      "original_x": 266,
+      "original_y": 380,
+      "width": 164,
+      "height": 143,
+      "alpha": true
+    },
+    {
+      "file": "interactables/diversion_valve_right.png",
+      "original_x": 1251,
+      "original_y": 151,
+      "width": 139,
+      "height": 140,
+      "alpha": true
+    },
+    {
+      "file": "interactables/pipe_entrance_vent.png",
+      "original_x": 59,
+      "original_y": 726,
+      "width": 118,
+      "height": 145,
+      "alpha": true
+    },
+    {
+      "file": "interactables/pipe_exit_grate.png",
+      "original_x": 1454,
+      "original_y": 722,
+      "width": 156,
+      "height": 131,
+      "alpha": true
+    },
+    {
+      "file": "interactables/ladder_inside_pipe.png",
+      "original_x": 1233,
+      "original_y": 531,
+      "width": 67,
+      "height": 219,
+      "alpha": true
+    }
+  ]
+}

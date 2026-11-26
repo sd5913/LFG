@@ -34,7 +34,7 @@ function drawSkeleton(canvas, landmarks, matches) {
   context.shadowBlur = 0;
 }
 
-function ChestUnlockSequence({ phase, onComplete }) {
+function ChestUnlockSequence({ phase }) {
   return <section className={`unlock-chest-sequence ${phase}`} aria-live="polite" aria-label={phase === 'animation' ? '宝箱开启中' : '偷取宝藏成功'}>
     <span className="unlock-alert-paused">警戒已暂停</span>
     <div className="unlock-chest-animation" aria-hidden="true">
@@ -50,8 +50,7 @@ function ChestUnlockSequence({ phase, onComplete }) {
     {phase === 'success' && <section className="unlock-success-card" role="status">
       <span>MISSION COMPLETE</span>
       <strong>成功偷取宝藏</strong>
-      <p>宝藏已收入囊中，请逃离博物馆！</p>
-      <button type="button" onClick={onComplete}>返回展厅，开始逃离</button>
+      <p>宝藏已收入囊中，即将开始逃离博物馆。</p>
     </section>}
   </section>;
 }
@@ -70,7 +69,6 @@ export function TreasureUnlock({ cameraStream, onComplete, onExit }) {
   const lastSeenRef = useRef(0);
   const machineRef = useRef(new UnlockMachine());
   const completedRef = useRef(false);
-  const completionTimerRef = useRef(0);
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unlockPhase, setUnlockPhase] = useState('challenge');
@@ -93,10 +91,18 @@ export function TreasureUnlock({ cameraStream, onComplete, onExit }) {
     setMessage('手势扫描已关闭。摄像头画面从未显示、录制或上传。');
   }, [releaseSensor]);
 
-  useEffect(() => () => {
-    window.clearTimeout(completionTimerRef.current);
-    releaseSensor();
-  }, [releaseSensor]);
+  useEffect(() => releaseSensor, [releaseSensor]);
+
+  useEffect(() => {
+    if (unlockPhase === 'challenge') return;
+
+    const timer = unlockPhase === 'animation' ? window.setTimeout(() => {
+      setUnlockPhase('success');
+      setMessage('成功偷取宝藏，请逃离博物馆！');
+    }, 2150) : window.setTimeout(onComplete, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [unlockPhase, onComplete]);
 
   const startScan = useCallback(async () => {
     if (loading || scanning) return;
@@ -142,10 +148,6 @@ export function TreasureUnlock({ cameraStream, onComplete, onExit }) {
             setStatus('宝箱已解锁');
             setMessage('四个手势已完成，正在开启宝箱…');
             setUnlockPhase('animation');
-            completionTimerRef.current = window.setTimeout(() => {
-              setUnlockPhase('success');
-              setMessage('成功偷取宝藏，请逃离博物馆！');
-            }, 2150);
             return;
           }
         } catch { gestureRef.current = GESTURES.NONE; drawSkeleton(canvasRef.current, null, false); }
@@ -154,7 +156,7 @@ export function TreasureUnlock({ cameraStream, onComplete, onExit }) {
     };
     frameRef.current = requestAnimationFrame(infer);
     return () => cancelAnimationFrame(frameRef.current);
-  }, [onComplete, releaseSensor, scanning]);
+  }, [releaseSensor, scanning]);
 
   const reset = () => {
     if (unlockPhase !== 'challenge') return;
@@ -193,7 +195,7 @@ export function TreasureUnlock({ cameraStream, onComplete, onExit }) {
       <section className="unlock-progress-track" aria-label="解锁进度"><div className="unlock-progress-fill-mask"><img style={{ transform: `scaleX(${snapshot.unlocked ? 1 : (snapshot.stepIndex + snapshot.progress) / STEPS.length})` }} src={`${ASSET_ROOT}/progress_fill_gold.png`} alt="" /></div><div className="unlock-progress-nodes">{CARD_ASSETS.map((asset, index) => { const state = snapshot.unlocked || index < snapshot.stepIndex ? 'completed' : (scanning || snapshot.stepIndex > 0) && index === current ? 'selected' : 'idle'; return <img className={state} style={{ left: `${NODE_LEFTS[index]}%` }} src={`${ASSET_ROOT}/progress_token_${state}.png`} alt={`第 ${index + 1} 步进度`} key={asset} />; })}</div></section>
       {unlockPhase === 'challenge' && <div className="unlock-stage-controls"><button type="button" className={`unlock-scan-toggle ${scanning ? 'scanning' : ''}`} onClick={scanning ? stopScan : startScan} disabled={loading}>{scanning ? '关闭手势扫描' : loading ? '正在开启…' : '开启手势扫描'}</button><button type="button" className="unlock-reset-toggle" onClick={reset}>重置</button><button type="button" className="unlock-exit-toggle" onClick={onExit}>返回展厅</button><span>{status}</span></div>}
       <div className={`unlock-message ${snapshot.unlocked ? 'success' : ''}`} role="status">{message}</div><video ref={videoRef} className="unlock-sensor-video" autoPlay muted playsInline aria-hidden="true" />
-      {unlockPhase !== 'challenge' && <ChestUnlockSequence phase={unlockPhase} onComplete={onComplete} />}
+      {unlockPhase !== 'challenge' && <ChestUnlockSequence phase={unlockPhase} />}
     </section>
     <p className="unlock-privacy-note">手势仅在本机浏览器中分析；界面不会显示、录制或上传摄像头画面。</p>
   </main>;

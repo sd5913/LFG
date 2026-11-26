@@ -8,6 +8,27 @@ import { TreasureUnlock } from './treasure-unlock.jsx';
 import { StreetEscape } from './street-escape.jsx';
 import './styles.css';
 
+function PipeRoom({ onComplete }) {
+  const frameRef = useRef(null);
+
+  useEffect(() => {
+    const finishPipeRoom = (event) => {
+      if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return;
+      if (event.data?.type === 'lfg:pipe-room-complete') onComplete();
+    };
+    window.addEventListener('message', finishPipeRoom);
+    return () => window.removeEventListener('message', finishPipeRoom);
+  }, [onComplete]);
+
+  return <iframe
+    ref={frameRef}
+    className="pipe-room-frame"
+    src="./Pipe_Room_demo_v1/index.html"
+    title="Museum Heist 第一关：通风管道潜入"
+    allow="camera"
+  />;
+}
+
 function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatus, cameraError, onToggleCamera }) {
   const host = useRef(null);
   const gameRef = useRef(null);
@@ -94,14 +115,25 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
 }
 
 function App() {
+  const [stage, setStage] = useState(() => {
+    const requested = new URLSearchParams(window.location.search).get('stage');
+    return requested === 'museum' || requested === 'escape' ? requested : 'pipe';
+  });
   const [activeExhibitId, setActiveExhibitId] = useState(null);
   const [treasureUnlockActive, setTreasureUnlockActive] = useState(false);
-  const [streetEscapeActive, setStreetEscapeActive] = useState(() => new URLSearchParams(window.location.search).get('stage') === 'escape');
   const [gameOver, setGameOver] = useState(false);
   const [resumeState, setResumeState] = useState(null);
   const cameraStreamRef = useRef(null);
   const [cameraStatus, setCameraStatus] = useState('idle');
   const [cameraError, setCameraError] = useState('');
+
+  const enterMuseum = useCallback(() => setStage('museum'), []);
+
+  const enterStreetEscape = useCallback(() => {
+    setResumeState((previous) => previous ? { ...previous, treasureUnlocked: true } : previous);
+    setTreasureUnlockActive(false);
+    setStage('escape');
+  }, []);
 
   const toggleCamera = useCallback(async () => {
     if (cameraStatus === 'requesting') return;
@@ -143,10 +175,12 @@ function App() {
     <section className="game-over-panel" role="alert"><span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button></section>
   </section></main>;
 
-  if (streetEscapeActive) return <StreetEscape
+  if (stage === 'pipe') return <PipeRoom onComplete={enterMuseum} />;
+
+  if (stage === 'escape') return <StreetEscape
     cameraStream={cameraStreamRef.current}
     alertLevel={resumeState?.alertLevel ?? 0}
-    onExit={() => setStreetEscapeActive(false)}
+    onExit={enterMuseum}
   />;
 
   if (activeExhibitId) return <PoseShadowDemo
@@ -168,11 +202,7 @@ function App() {
   if (treasureUnlockActive) return <TreasureUnlock
     cameraStream={cameraStreamRef.current}
     onExit={() => setTreasureUnlockActive(false)}
-    onComplete={() => {
-      setResumeState((previous) => previous ? { ...previous, treasureUnlocked: true } : previous);
-      setTreasureUnlockActive(false);
-      setStreetEscapeActive(true);
-    }}
+    onComplete={enterStreetEscape}
   />;
 
   return <RoomExperience
