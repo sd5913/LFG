@@ -4,39 +4,55 @@ import { createRoot } from 'react-dom/client';
 import Phaser from 'phaser';
 import Room1 from './game/Room1.js';
 import { GAME } from './game/config.js';
+import { GameplayHud } from './gameplay-hud.jsx';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import { TreasureUnlock } from './treasure-unlock.jsx';
 import { StreetEscape } from './street-escape.jsx';
-import { LANGUAGE_STORAGE_KEY, normalizeLanguage } from './game-locale.js';
+import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from './game-locale.js';
+import { GameCamera, useCameraSession, useFrameCamera, useGameCamera } from './use-game-camera.js';
 import { GameLanguage, useFrameLanguage, useGameText } from './use-game-language.js';
 import './styles.css';
 
 function PipeRoom({ onComplete }) {
   const frameRef = useRef(null);
   const syncLanguage = useFrameLanguage(frameRef);
+  const syncCamera = useFrameCamera(frameRef);
   const t = useGameText();
+  const [alertLevel, setAlertLevel] = useState(0);
 
   useEffect(() => {
-    const finishPipeRoom = (event) => {
+    const receivePipeMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return;
       if (event.data?.type === 'lfg:pipe-room-complete') onComplete();
+      if (event.data?.type === 'lfg:pipe-room-alert' && Number.isFinite(event.data.alertLevel)) {
+        setAlertLevel(Math.min(100, Math.max(0, event.data.alertLevel)));
+      }
     };
-    window.addEventListener('message', finishPipeRoom);
-    return () => window.removeEventListener('message', finishPipeRoom);
+    window.addEventListener('message', receivePipeMessage);
+    return () => window.removeEventListener('message', receivePipeMessage);
   }, [onComplete]);
 
-  return <iframe
-    ref={frameRef}
-    className="pipe-room-frame"
-    src={publicAsset('Pipe_Room_demo_v1/index.html')}
-    title={t('Museum Heist 第一关：通风管道潜入', 'Museum Heist Stage 1: Ventilation Tunnels')}
-    allow="camera"
-    onLoad={syncLanguage}
-  />;
+  return <main className="game-shell">
+    <section className="stage-shell pipe-stage-shell" aria-label={t('通风管道潜入', 'Ventilation Tunnels')}>
+      <iframe
+        ref={frameRef}
+        className="pipe-room-frame"
+        src={publicAsset('Pipe_Room_demo_v1/index.html')}
+        title={t('Museum Heist 第一关：通风管道潜入', 'Museum Heist Stage 1: Ventilation Tunnels')}
+        onLoad={() => {
+          syncLanguage();
+          syncCamera();
+          frameRef.current?.focus();
+        }}
+      />
+      <GameplayHud alertLevel={alertLevel} currentRoom={1} onPointerUse={() => frameRef.current?.focus()} />
+    </section>
+  </main>;
 }
 
-function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatus, cameraError, onToggleCamera }) {
+function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState }) {
   const t = useGameText();
+  const { status: cameraStatus } = useGameCamera();
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
@@ -71,7 +87,7 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
 
   useEffect(() => {
     const openInteraction = event => {
-      if (event.code !== 'Space' || event.repeat) return;
+      if (event.code !== 'Space' || event.repeat || event.target instanceof HTMLButtonElement) return;
       event.preventDefault();
       const scene = gameRef.current?.scene.getScene('Room1');
       if (state.nearTreasure && !state.treasureUnlocked) {
@@ -89,28 +105,7 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
   return <main className="game-shell">
     <section className="stage-shell" aria-label={t('Museum Heist 游戏区域', 'Museum Heist game area')}>
       <div ref={host} className="game-host" />
-      <div className="room-hud gameplay-hud">
-        <img className="gameplay-hud-background" src={publicAsset('stealth-ui/top_hud_background.png')} alt="" />
-        <div className="gameplay-alert" aria-label={`${t('警戒', 'Alert')} ${Math.round(state.alertLevel ?? 0)}%`}>
-          <img className="gameplay-siren" src={publicAsset('stealth-ui/alarm_siren.png')} alt="" />
-          <span className="gameplay-alert-copy">{t('警戒', 'Alert')}<strong>{Math.round(state.alertLevel ?? 0)}%</strong></span>
-          <div className="gameplay-meter">
-            <img src={publicAsset('stealth-ui/alarm_meter_frame.png')} alt="" />
-            <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - (state.alertLevel ?? 0)}% 0 0)` }} src={publicAsset('stealth-ui/alarm_meter_fill_segments.png')} alt="" />
-          </div>
-        </div>
-        <div className="gameplay-route" aria-label={t('潜入路线：当前位于第三展厅', 'Infiltration route: third gallery')}>
-          {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === 3 ? 'current' : ''}`} key={room}>
-            <img src={publicAsset('stealth-ui/room_house.png')} alt={t(`第 ${room} 个房间`, `Room ${room}`)} />
-            {room === 3 && <img className="gameplay-player-marker" src={publicAsset('stealth-ui/player_marker.png')} alt={t('小偷当前位置', 'Thief’s location')} />}
-          </div>)}
-          <img className="gameplay-treasure" src={publicAsset('stealth-ui/treasure_chest.png')} alt={t('最终宝箱', 'Treasure chest')} />
-        </div>
-        <button className={`hud-camera ${cameraStatus}`} type="button" onClick={onToggleCamera} disabled={cameraStatus === 'requesting'}>
-          {cameraStatus === 'ready' ? t('关闭扫描摄像头', 'Turn off camera') : cameraStatus === 'requesting' ? t('正在开启…', 'Starting…') : cameraStatus === 'error' ? t('重试扫描摄像头', 'Retry camera') : t('开启扫描摄像头', 'Enable camera')}
-        </button>
-        {cameraError && <span className="hud-camera-error">{t(...cameraError)}</span>}
-      </div>
+      <GameplayHud alertLevel={state.alertLevel} currentRoom={3} />
       {state.gameOver && <section className="game-over-panel" role="alert">
         <span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={() => window.location.reload()}>{t('重新开始', 'Restart')}</button>
       </section>}
@@ -128,6 +123,7 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
 
 function App() {
   const t = useGameText();
+  const { stream: cameraStream } = useGameCamera();
   const [stage, setStage] = useState(() => {
     const requested = new URLSearchParams(window.location.search).get('stage');
     return requested === 'museum' || requested === 'escape' ? requested : 'pipe';
@@ -136,9 +132,6 @@ function App() {
   const [treasureUnlockActive, setTreasureUnlockActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [resumeState, setResumeState] = useState(null);
-  const cameraStreamRef = useRef(null);
-  const [cameraStatus, setCameraStatus] = useState('idle');
-  const [cameraError, setCameraError] = useState('');
 
   const enterMuseum = useCallback(() => setStage('museum'), []);
 
@@ -155,38 +148,10 @@ function App() {
     setStage('escape');
   }, []);
 
-  const toggleCamera = useCallback(async () => {
-    if (cameraStatus === 'requesting') return;
-    if (cameraStatus === 'ready') {
-      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
-      cameraStreamRef.current = null;
-      setCameraError('');
-      setCameraStatus('idle');
-      return;
-    }
-    setCameraStatus('requesting');
-    setCameraError('');
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is unavailable in this browser.');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 }, audio: false });
-      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
-      cameraStreamRef.current = stream;
-      setCameraStatus('ready');
-    } catch {
-      setCameraError([
-        '无法开启摄像头，请检查浏览器权限。',
-        'Could not start the camera. Check your browser permissions.',
-      ]);
-      setCameraStatus('error');
-    }
-  }, [cameraStatus]);
-
-  useEffect(() => () => cameraStreamRef.current?.getTracks().forEach((track) => track.stop()), []);
-
   useEffect(() => {
     if (!activeExhibitId) return undefined;
     const exitChallenge = event => {
-      if (event.code !== 'Space' || event.repeat) return;
+      if (event.code !== 'Space' || event.repeat || event.target instanceof HTMLButtonElement) return;
       event.preventDefault();
       setActiveExhibitId(null);
     };
@@ -196,19 +161,19 @@ function App() {
 
   if (gameOver) return <main className="game-shell"><section className="stage-shell game-over-stage">
     <section className="game-over-panel" role="alert"><span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={() => window.location.reload()}>{t('重新开始', 'Restart')}</button></section>
+    <GameplayHud alertLevel={resumeState?.alertLevel ?? 0} currentRoom={3} />
   </section></main>;
 
   if (stage === 'pipe') return <PipeRoom onComplete={enterMuseumFromPipe} />;
 
   if (stage === 'escape') return <StreetEscape
-    cameraStream={cameraStreamRef.current}
     alertLevel={resumeState?.alertLevel ?? 0}
     onExit={enterMuseum}
   />;
 
   if (activeExhibitId) return <PoseShadowDemo
     exhibitId={activeExhibitId}
-    cameraStream={cameraStreamRef.current}
+    cameraStream={cameraStream}
     alertLevel={resumeState?.alertLevel ?? 0}
     onComplete={(result) => {
       if (result?.success) setResumeState((previous) => previous ? {
@@ -223,16 +188,14 @@ function App() {
   />;
 
   if (treasureUnlockActive) return <TreasureUnlock
-    cameraStream={cameraStreamRef.current}
+    cameraStream={cameraStream}
+    alertLevel={resumeState?.alertLevel ?? 0}
     onExit={() => setTreasureUnlockActive(false)}
     onComplete={enterStreetEscape}
   />;
 
   return <RoomExperience
     resumeState={resumeState}
-    cameraStatus={cameraStatus}
-    cameraError={cameraError}
-    onToggleCamera={toggleCamera}
     onPoseDemo={(exhibitId, playerState) => {
       setResumeState(playerState);
       setActiveExhibitId(exhibitId);
@@ -245,23 +208,24 @@ function App() {
 }
 
 function MuseumHeist() {
+  const camera = useCameraSession();
   const [language, setLanguage] = useState(() => {
     try { return normalizeLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)); }
-    catch { return 'zh-CN'; }
+    catch { return DEFAULT_LANGUAGE; }
   });
 
   useEffect(() => {
     document.documentElement.lang = language;
-    try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language); }
-    catch { /* Language still applies for this session. */ }
   }, [language]);
 
-  return <GameLanguage.Provider value={language}>
-    <App />
-    <div className="game-language" role="group" aria-label={language === 'en' ? 'Game language' : '游戏语言'}>
-      <button type="button" lang="zh-CN" aria-pressed={language === 'zh-CN'} onClick={() => setLanguage('zh-CN')}>中文</button>
-      <button type="button" lang="en" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>EN</button>
-    </div>
+  const chooseLanguage = (nextLanguage) => {
+    setLanguage(nextLanguage);
+    try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage); }
+    catch { /* Language still applies for this session. */ }
+  };
+
+  return <GameLanguage.Provider value={{ language, chooseLanguage }}>
+    <GameCamera.Provider value={camera}><App /></GameCamera.Provider>
   </GameLanguage.Provider>;
 }
 

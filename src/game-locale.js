@@ -1,8 +1,9 @@
-export const LANGUAGE_STORAGE_KEY = 'museum-heist-language';
+export const LANGUAGE_STORAGE_KEY = 'museum-heist-language-preference';
+export const DEFAULT_LANGUAGE = 'en';
 const LANGUAGE_MESSAGE = 'lfg:game-language';
 
 export function normalizeLanguage(language) {
-  return language === 'en' ? 'en' : 'zh-CN';
+  return language === 'zh-CN' ? 'zh-CN' : DEFAULT_LANGUAGE;
 }
 
 export function sendFrameLanguage(frame, language) {

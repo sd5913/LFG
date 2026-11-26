@@ -126,3 +126,4 @@
   border: 0;
   box-shadow: none;
 }
+.rps-in-escape .portrait { height: min(17.6cqw, 28vh); }

@@ -15,8 +15,10 @@ A pixel-art stealth game with gesture controls. Sneak into the museum through th
 ## 01 · Ventilation Tunnels
 
 - Use **WASD** or the **arrow keys** to move through the tunnels and climb ladders.
-- Press **Space** to jump across a gap while the steam is off.
+- Press **Space** to jump across a gap while the steam is off. A missed jump registers when more than half of the grounded character is over the opening.
+- Rats travel from `EXIT` to `START`, spawning every 5–7 seconds after you start moving. Use **Space** to dodge them. A bite or missed jump adds 30 percentage points of alert and freezes you in place for two seconds. At 100%, you are caught.
 - Press **E** near a diversion valve to open the gesture panel. Make a fist and rotate your wrist to open the valve, or hold **Enter** to simulate opening it.
+- Select **Enable camera** in the top bar to use hand gestures at the valves. This control is available throughout the game and shares the same camera session across stages.
 
 ## 02 · Gallery Disguise and Treasure Unlock
 
@@ -39,7 +41,7 @@ If the guard spots you, they give chase and the alert level rises. The game ends
 
 - Press **A** or **D** to move, **Space** to jump, **Space** twice for a longer jump, and **Ctrl** to crouch.
 - Hitting an obstacle raises the alert level. If the guard catches you, a game of rock–paper–scissors begins. You are arrested at 100% alert.
-- Play rock–paper–scissors with the camera or use the camera-free demo mode. Reach the getaway van to complete the escape.
+- Play rock–paper–scissors with the camera enabled or select gestures manually when the camera is off. Reach the getaway van to complete the escape.
 
 ## Run locally
 
@@ -52,7 +54,7 @@ pnpm dev
 
 Open the local URL printed by Vite, usually `http://127.0.0.1:5173/`, to start at stage one. For debugging, append `?stage=museum` or `?stage=escape` to jump directly to stage two or three. Allow camera access in your browser to use camera-based controls.
 
-Use the **中文 / EN** buttons in the bottom-right corner to switch between Chinese and English. The game keeps your choice across stages and remembers it the next time you open it.
+The game starts in English. Select **中文** in the top bar to switch to Chinese, or **EN** to switch back. The game keeps your choice across stages and remembers it the next time you open it.
 
 ### Common commands
 

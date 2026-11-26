@@ -1,4 +1,5 @@
 import { createFrameLocale } from '../src/game-locale.js';
+import { GAME_CAMERA_EVENT, hasLiveVideo, requestGameCamera, stopGameCamera } from '../src/game-camera.js';
 const $ = id => document.getElementById(id);
 const {t, setText} = createFrameLocale();
 const ROUND_PAUSE_MS = 3000;
@@ -13,7 +14,9 @@ const policeGestureArt = {
 const edges = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
 const state = {mode:'idle',stream:null,ownsStream:false,model:null,lastVideo:-1,detected:null,stable:null,frames:0,selected:'paper',timer:null,gestureTimer:null,revealTimer:null,roundPause:null,raf:0,round:0,playerWins:0,policeWins:0,history:[]};
 const $video=$('camera'),$canvas=$('landmarks'),ctx=$canvas.getContext('2d');
-let challengeInput = null;
+let streetCameraStream;
+let streetRoundStarted = false;
+let cameraAttempt = 0;
 function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function classify(p){
   if(!p?.length)return null;
@@ -56,23 +59,41 @@ function showPlayerGesture(g){
   choice.append(image);
 }
 function setResult(zh,en=zh,kind=''){setText('result',zh,en);$('result').className='result '+kind}
-async function loadCamera(sharedStream){
+async function loadCamera(sharedStream, attempt){
   setText('camera-status', '加载识别中…', 'Loading detection…');
-  const stream = sharedStream ?? await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+  const stream = inStreetEscape ? sharedStream : await requestGameCamera();
+  if (attempt !== cameraAttempt) {
+    if (!inStreetEscape) stopGameCamera(stream);
+    return false;
+  }
   state.ownsStream = !sharedStream;
-  state.stream=stream;$video.srcObject=stream;await $video.play();$canvas.width=$video.videoWidth;$canvas.height=$video.videoHeight;
+  state.stream = stream;
+  $video.srcObject = stream;
+  await $video.play();
+  if (attempt !== cameraAttempt) return false;
+  $canvas.width = $video.videoWidth;
+  $canvas.height = $video.videoHeight;
+  const mp=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm');
+  if (attempt !== cameraAttempt) return false;
+  const vision=await mp.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  if (attempt !== cameraAttempt) return false;
+  const opts={baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numHands:1};
+  let model;
   try{
-    const mp=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm');
-    const vision=await mp.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
-    const opts={baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numHands:1};
-    try{state.model=await mp.HandLandmarker.createFromOptions(vision,opts)}catch{state.model=await mp.HandLandmarker.createFromOptions(vision,{...opts,baseOptions:{...opts.baseOptions,delegate:'CPU'}})}
-  }catch(error){stopCamera();throw new Error('Could not load the gesture model.', { cause: error })}
+    model=await mp.HandLandmarker.createFromOptions(vision,opts);
+  }catch{
+    model=await mp.HandLandmarker.createFromOptions(vision,{...opts,baseOptions:{...opts.baseOptions,delegate:'CPU'}});
+  }
+  if (attempt !== cameraAttempt) { model.close(); return false; }
+  state.model=model;
   state.mode='camera';setText('camera-status', '实时识别中', 'Live detection');document.querySelector('.preview').classList.add('ready');scan();
+  return true;
 }
 function scan(){if(state.mode!=='camera')return;state.raf=requestAnimationFrame(scan);if($video.readyState<2||$video.currentTime===state.lastVideo)return;state.lastVideo=$video.currentTime;try{const points=state.model.detectForVideo($video,performance.now()).landmarks?.[0];draw(points);const g=classify(points);state.frames=g&&g===state.detected?state.frames+1:1;state.detected=g;if(state.frames>=3)state.stable=g;showGesture(state.stable)}catch{setText('camera-status', '识别暂时中断', 'Detection interrupted')}}
 function stopCamera() {
+  cameraAttempt++;
   cancelAnimationFrame(state.raf);
-  if (state.ownsStream) state.stream?.getTracks().forEach((track) => track.stop());
+  if (state.ownsStream) stopGameCamera(state.stream);
   state.stream = null;
   state.ownsStream = false;
   $video.srcObject = null;
@@ -189,31 +210,31 @@ function reset() {
   renderScore();
 }
 
-function startDemo(status = ['演示模式', 'Demo mode']) {
-  reset();
+function useDemoInput(status = ['演示模式 · 摄像头已关闭', 'Demo mode · Camera off']) {
   state.mode = 'demo';
   showGesture(state.selected);
   setText('camera-cover', '在左下角选择要出的拳', 'Choose a gesture in the lower-left panel');
   setText('camera-status', ...status);
+}
+
+function startDemo() {
+  reset();
+  useDemoInput();
   countdown();
 }
 
-async function startCamera(stream) {
+async function startCamera() {
   reset();
+  const attempt = cameraAttempt;
   $('start').disabled = true;
   $('demo').disabled = true;
   setText('camera-cover', '请露出一只完整的手', 'Keep one whole hand in view');
-  setResult(stream ? '正在加载手势识别…' : '正在启动摄像头与手势识别…',
-    stream ? 'Loading gesture detection…' : 'Starting the camera and gesture detection…');
+  setResult('正在启动摄像头与手势识别…', 'Starting the camera and gesture detection…');
   try {
-    await loadCamera(stream);
-    countdown();
+    if (await loadCamera(null, attempt)) countdown();
   } catch (error) {
+    if (attempt !== cameraAttempt) return;
     stopCamera();
-    if (inStreetEscape) {
-      startDemo(['手势识别暂不可用，已切换为演示模式', 'Gesture detection unavailable. Switched to demo mode.']);
-      return;
-    }
     console.error(error);
     setResult('手势识别启动失败，请检查摄像头权限与网络。', 'Could not start gesture detection. Check camera permissions and network access.', 'lose');
     setText('camera-status', '启动失败', 'Could not start');
@@ -222,21 +243,43 @@ async function startCamera(stream) {
   }
 }
 
-function startStreetChallenge() {
-  const stream = challengeInput?.stream;
-  if (stream?.getVideoTracks().some((track) => track.readyState === 'live')) {
-    void startCamera(stream);
-  } else {
-    startDemo();
+function beginStreetRound() {
+  if (!streetRoundStarted) {
+    streetRoundStarted = true;
+    countdown();
+  }
+}
+
+async function syncStreetInput(stream) {
+  if (state.round >= 3) return;
+  // Keep the current round, score and countdown when the global camera changes.
+  stopCamera();
+  Object.assign(state, { detected: null, stable: null, frames: 0, lastVideo: -1 });
+  if (!hasLiveVideo(stream)) {
+    useDemoInput();
+    beginStreetRound();
+    return;
+  }
+  const attempt = cameraAttempt;
+  state.mode = 'loading';
+  showGesture(null);
+  setText('camera-cover', '请露出一只完整的手', 'Keep one whole hand in view');
+  try {
+    if (await loadCamera(stream, attempt)) beginStreetRound();
+  } catch {
+    if (attempt !== cameraAttempt) return;
+    stopCamera();
+    useDemoInput(['手势识别暂不可用，已切换为演示模式', 'Gesture detection unavailable. Switched to demo mode.']);
+    beginStreetRound();
   }
 }
 
 if (inStreetEscape) {
   document.documentElement.classList.add('rps-in-escape');
-  window.addEventListener('street-rps-start', (event) => {
-    if (challengeInput) return;
-    challengeInput = event.detail;
-    startStreetChallenge();
+  window.addEventListener(GAME_CAMERA_EVENT, ({detail: stream}) => {
+    if (streetCameraStream === stream) return;
+    streetCameraStream = stream;
+    void syncStreetInput(stream);
   });
 } else {
   $('start').hidden = false;
@@ -246,7 +289,11 @@ if (inStreetEscape) {
 }
 $('retry').onclick = () => {
   if (state.round < 3 && state.mode !== 'idle') countdown();
-  else if (inStreetEscape) startStreetChallenge();
+  else if (inStreetEscape) {
+    reset();
+    streetRoundStarted = false;
+    void syncStreetInput(streetCameraStream);
+  }
   else reset();
 };
 document.querySelectorAll('.hands>div').forEach(el=>el.onclick=()=>{if(state.mode==='camera')return;state.selected=el.dataset.gesture;showGesture(state.selected)});

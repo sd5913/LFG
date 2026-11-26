@@ -13,11 +13,16 @@ let dist=0;
 for(const seg of SEGMENTS){seg.start=dist;seg.length=Math.hypot(seg.to[0]-seg.from[0],seg.to[1]-seg.from[1]);seg.end=dist+seg.length;dist=seg.end;}
 export const TOTAL_LENGTH=dist;
 export function segById(id){return SEGMENTS.find(s=>s.id===id);}
+// The opening spans the inner edges of the two rims in the pipe artwork.
 export const HAZARDS=[
- {id:'steam-bottom',segment:'bottom',center:segById('bottom').start+(753-121),halfWidth:49,name:'第一处间歇喷气',phase:0},
- {id:'steam-middle',segment:'middle',center:segById('middle').start+(1249-816),halfWidth:47,name:'第二处间歇喷气',phase:1.75},
- {id:'steam-top',segment:'top',center:segById('top').start+(853-211),halfWidth:45,name:'第三处间歇喷气',phase:0.95}
-];
+ {id:'steam-bottom',segment:'bottom',center:753,opening:[714,798],phase:0},
+ {id:'steam-middle',segment:'middle',center:816,opening:[855,776],phase:1.75},
+ {id:'steam-top',segment:'top',center:853,opening:[823,895],phase:0.95}
+].map(hazard=>{
+ const pipe=segById(hazard.segment);
+ const toRoute=x=>pipe.start+Math.abs(x-pipe.from[0]);
+ return {...hazard,center:toRoute(hazard.center),opening:hazard.opening.map(toRoute)};
+});
 export const VALVES=[
  {id:'left',name:'左侧分流阀门',nameEn:'Left diversion valve',at:segById('middle').start+(1249-447),position:[351,445],hint:'转动左侧阀门，才能向左进入上升管'},
  {id:'right',name:'顶层分流阀门',nameEn:'Upper diversion valve',at:segById('top').start+(1240-211),position:[1319,211],hint:'转动右侧阀门，才能进入右侧下降管'}
@@ -66,7 +71,11 @@ export function clampAtLockedValve(oldS,newS,opened){
  }
  return {s:newS,blocked:null};
 }
-export function hazardAt(s){return HAZARDS.find(h=>Math.abs(h.center-s)<=h.halfWidth)||null;}
+export function hazardAt(s,bodyWidth){
+ // The centered sprite has more than half its width over a gap only when its
+ // center is strictly inside and the opening itself is wider than half the body.
+ return HAZARDS.find(({opening:[start,end]})=>s>start&&s<end&&end-start>bodyWidth/2)??null;
+}
 export const STEAM_ON_DURATION=3;
 export const STEAM_OFF_DURATION=3;
 export const STEAM_PERIOD=STEAM_ON_DURATION+STEAM_OFF_DURATION;
@@ -75,18 +84,29 @@ export function steamState(h, seconds){
  const active=t<STEAM_ON_DURATION;
  return {active,remaining:active?STEAM_ON_DURATION-t:STEAM_PERIOD-t,phase:t,period:STEAM_PERIOD};
 }
-export function jumpHeight(elapsed,duration=1.16){
+export const JUMP_DURATION=1.16;
+export function jumpHeight(elapsed,duration=JUMP_DURATION){
  return elapsed>=0&&elapsed<duration?70*Math.sin(Math.PI*elapsed/duration):0;
 }
-export function safeFromSteam(s,jumpElapsed,seconds=0){
- const h=hazardAt(s);
- return !h||(!steamState(h,seconds).active&&jumpHeight(jumpElapsed)>16);
+export function resolveSteamMove(from,to,bodyWidth,jumping,seconds,failedGap){
+ const gap=hazardAt(to,bodyWidth);
+ if(!gap||(jumping&&!steamState(gap,seconds).active))return {s:to,hit:null,failedGap:null};
+ if(gap===failedGap){
+  // After a hit, the player can jump again or retreat to the closer rim.
+  const [start,end]=gap.opening;
+  const retreating=from<=(start+end)/2?to<from:to>from;
+  return {s:retreating?to:from,hit:null,failedGap};
+ }
+ return {s:to,hit:jumping?'steam':'gap',failedGap:gap};
 }
-// v1.2 crawl: more stop-start, less skating.
+
+export function ratSpawnDelay(random=Math.random){return 5+random()*2;}
+
+export function ratCanBite(playerS,ratS,jumpElapsed){
+ return Math.abs(playerS-ratS)<34&&jumpHeight(jumpElapsed)<24;
+}
 export const CRAWL_STROKE_SECONDS=.42;
 export function crawlRate(seconds){
- const phase=((seconds%CRAWL_STROKE_SECONDS)+CRAWL_STROKE_SECONDS)%CRAWL_STROKE_SECONDS/CRAWL_STROKE_SECONDS;
- if(phase<.16)return .24+1.55*phase/.16;
- if(phase<.56)return 1.79-.52*(phase-.16)/.40;
- return .03;
+ // Keep the same average speed with a small, continuous push-and-glide rhythm.
+ return .79+.1*Math.sin(2*Math.PI*seconds/CRAWL_STROKE_SECONDS);
 }

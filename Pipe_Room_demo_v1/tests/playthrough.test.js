@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {TOTAL_LENGTH,HAZARDS,VALVES,routeAt,movementForKey,clampAtLockedValve,
-  safeFromSteam,steamState,crawlRate} from '../src/route.js';
+import {TOTAL_LENGTH,HAZARDS,routeAt,movementForKey,clampAtLockedValve,
+  resolveSteamMove,steamState,crawlRate} from '../src/route.js';
 
 test('simulated real-time run waits for OFF windows, jumps all gaps, opens gates and reaches exit',()=>{
  const dt=1/60, speed=218, jumpDur=1.16;
@@ -29,9 +29,10 @@ test('simulated real-time run waits for OFF windows, jumps all gaps, opens gates
   if(gate.blocked){opened[gate.blocked.id]=true;gate=clampAtLockedValve(s,target,opened);}
   target=gate.s;
   t+=dt;
-  assert.equal(safeFromSteam(target,jump??-1,t),true,`failed hazard at s=${target.toFixed(1)}, t=${t.toFixed(2)}, jump=${jump}`);
-  s=target;
-  for(const h of HAZARDS){if(s>=h.center+h.halfWidth+24)passed.add(h.id);}
+  const move=resolveSteamMove(s,target,92,jump!==null,t,null);
+  assert.equal(move.hit,null,`failed hazard at s=${target.toFixed(1)}, t=${t.toFixed(2)}, jump=${jump}`);
+  s=move.s;
+  for(const h of HAZARDS){if(s>=h.opening[1]+24)passed.add(h.id);}
   if(jump!==null){jump+=dt;if(jump>=jumpDur)jump=null;}
  }
  assert.ok(TOTAL_LENGTH-s<2,`did not reach the exit: ${s}/${TOTAL_LENGTH}`);

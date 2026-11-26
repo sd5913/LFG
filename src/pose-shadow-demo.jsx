@@ -1,4 +1,6 @@
 import { publicAsset } from './public-asset.js';
+import { hasLiveVideo } from './game-camera.js';
+import { GameplayHud } from './gameplay-hud.jsx';
 import { useGameText } from './use-game-language.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -211,6 +213,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
   const targetRef = useRef(target);
   const onCompleteRef = useRef(onComplete);
   const actionStartedAtRef = useRef(null);
+  const elapsedRef = useRef(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -234,6 +237,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
       const now = performance.now();
       actionStartedAtRef.current ??= now;
       const elapsed = now - actionStartedAtRef.current;
+      elapsedRef.current = elapsed;
       const nextSecond = Math.max(0, Math.ceil((SCAN_DURATION_MS - elapsed) / 1000));
       setScanSeconds((current) => current === nextSecond ? current : nextSecond);
       if (elapsed >= SCAN_DURATION_MS) {
@@ -269,40 +273,64 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
     animationFrameRef.current = requestAnimationFrame(detectFrame);
   }, []);
 
-  const startScanner = useCallback(async () => {
-    setError(false); setStatus(['正在连接扫描器…', 'Connecting to the scanner…']);
-    try {
-      if (!cameraStream?.active) throw new Error('The gallery camera is off.');
-      const { FilesetResolver, PoseLandmarker } = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`);
-      const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
-      if (!landmarkerRef.current) {
-        const options = { baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.55, minPosePresenceConfidence: 0.55, minTrackingConfidence: 0.5 };
-        try { landmarkerRef.current = await PoseLandmarker.createFromOptions(vision, options); }
-        catch { landmarkerRef.current = await PoseLandmarker.createFromOptions(vision, { ...options, baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' } }); }
-      }
-      streamRef.current = cameraStream; videoRef.current.srcObject = cameraStream;
-      await videoRef.current.play();
-      actionStartedAtRef.current = performance.now();
-      setScanSeconds(20);
-      setIsRunning(true); setStatus(['扫描灯靠近 · 模仿目标姿势', 'Scan light approaching · Match the target pose']);
-      animationFrameRef.current = requestAnimationFrame(detectFrame);
-    } catch {
-      streamRef.current = null;
-      setError(true); setStatus(['扫描器连接失败', 'Could not connect to the scanner']);
-    }
-  }, [cameraStream, detectFrame]);
-
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => {
-    startScanner();
-    return () => {
+    setIsRunning(false);
+    setIsMatching(false);
+    setHoldProgress(0);
+    setError(false);
+    holdStartedAtRef.current = null;
+    lastProgressRef.current = 0;
+    if (!hasLiveVideo(cameraStream)) {
+      setStatus(['摄像头已关闭', 'Camera off']);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const video = videoRef.current;
+    const releaseScanner = () => {
       cancelAnimationFrame(animationFrameRef.current);
       streamRef.current = null;
-      if (videoRef.current) { videoRef.current.pause(); videoRef.current.srcObject = null; }
+      video.pause();
+      video.srcObject = null;
       landmarkerRef.current?.close();
       landmarkerRef.current = null;
     };
-  }, [startScanner]);
+    async function startScanner() {
+      setStatus(['正在连接扫描器…', 'Connecting to the scanner…']);
+      try {
+        const { FilesetResolver, PoseLandmarker } = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`);
+        if (cancelled) return;
+        const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
+        if (cancelled) return;
+        const options = { baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.55, minPosePresenceConfidence: 0.55, minTrackingConfidence: 0.5 };
+        let model;
+        try { model = await PoseLandmarker.createFromOptions(vision, options); }
+        catch { model = await PoseLandmarker.createFromOptions(vision, { ...options, baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' } }); }
+        if (cancelled) { model.close(); return; }
+        landmarkerRef.current = model;
+        streamRef.current = cameraStream;
+        video.srcObject = cameraStream;
+        await video.play();
+        if (cancelled) return;
+        lastVideoTimeRef.current = -1;
+        actionStartedAtRef.current = performance.now() - elapsedRef.current;
+        setIsRunning(true);
+        setStatus(['扫描灯靠近 · 模仿目标姿势', 'Scan light approaching · Match the target pose']);
+        animationFrameRef.current = requestAnimationFrame(detectFrame);
+      } catch {
+        if (cancelled) return;
+        releaseScanner();
+        setError(true);
+        setStatus(['扫描器连接失败', 'Could not connect to the scanner']);
+      }
+    }
+    void startScanner();
+    return () => {
+      cancelled = true;
+      releaseScanner();
+    };
+  }, [cameraStream, detectFrame]);
   useEffect(() => {
     if (!isRunning && canvasRef.current) drawPose(canvasRef.current, null, false, target);
   }, [isRunning, target]);
@@ -313,24 +341,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
         <img className="museum-backplate" src={asset('museum_scene_backplate.png')} alt="" />
         <div className="scene-dim" />
 
-        <header className="top-hud gameplay-hud pose-gameplay-hud">
-          <img className="gameplay-hud-background" src={asset('top_hud_background.png')} alt="" />
-          <div className="gameplay-alert" aria-label={`${t('暂停中的警戒', 'Alert paused at')} ${Math.round(alertLevel)}%`}>
-            <img className="gameplay-siren" src={asset('alarm_siren.png')} alt="" />
-            <span className="gameplay-alert-copy">{t('警戒', 'Alert')}<strong>{Math.round(alertLevel)}%</strong></span>
-            <div className="gameplay-meter">
-              <img src={asset('alarm_meter_frame.png')} alt="" />
-              <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - alertLevel}% 0 0)` }} src={asset('alarm_meter_fill_segments.png')} alt="" />
-            </div>
-          </div>
-          <div className="gameplay-route" aria-label={t('潜入路线：当前位于第三展厅', 'Infiltration route: third gallery')}>
-            {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === 3 ? 'current' : ''}`} key={room}>
-              <img src={asset('room_house.png')} alt={t(`第 ${room} 个房间`, `Room ${room}`)} />
-              {room === 3 && <img className="gameplay-player-marker" src={asset('player_marker.png')} alt={t('小偷当前位置', 'Thief’s location')} />}
-            </div>)}
-            <img className="gameplay-treasure" src={asset('treasure_chest.png')} alt={t('最终宝箱', 'Treasure chest')} />
-          </div>
-        </header>
+        <GameplayHud alertLevel={alertLevel} currentRoom={3} />
 
         <section className="challenge-layer">
           <div className="warning-banner">
@@ -348,14 +359,14 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
               <div className="pose-meter"><img src={asset('pose_progress_frame.png')} alt="" /><img className="meter-fill" style={{ clipPath: `inset(0 ${100 - holdProgress}% 0 0)` }} src={asset('pose_progress_fill_segments.png')} alt="" /></div>
               <strong>{Math.round(holdProgress)}%</strong>
             </div>
-            {!isRunning && <p className="scan-hint">{error ? t('请返回主地图上方栏开启摄像头', 'Enable the camera from the gallery') : t('正在接入已开启的扫描摄像头…', 'Connecting to the camera…')}</p>}
+            {!isRunning && <p className="scan-hint">{error ? t('无法启动姿势扫描', 'Could not start the pose scanner') : hasLiveVideo(cameraStream) ? t('正在接入已开启的扫描摄像头…', 'Connecting to the camera…') : t('请在顶部栏开启摄像头', 'Enable the camera in the top bar')}</p>}
           </section>
 
           <footer className="result-banner">
             <img src={asset('result_banner_blank.png')} alt="" />
             <div className="result-copy"><span>{t('成功：获得安全窗口', 'Success: Brief cover')}</span><b className="scan-auto-label">{isRunning ? t('扫描中', 'Scanning') : t('等待摄像头', 'Waiting for camera')}</b><em>{t('失败：警戒上升', 'Failure: Alert increases')}</em></div>
           </footer>
-          {error && <p className="error-message">{t('无法连接摄像头，请返回展厅检查权限。', 'Could not connect to the camera. Check permissions in the gallery.')}</p>}
+          {error && <p className="error-message">{t('请检查网络后，从顶部栏重新开启摄像头。', 'Check your connection, then restart the camera from the top bar.')}</p>}
         </section>
         <video ref={videoRef} muted playsInline />
       </section>

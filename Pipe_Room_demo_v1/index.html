@@ -5,8 +5,15 @@
 </head><body>
 <div class="game-frame" id="game-frame">
 <canvas id="game" width="1671" height="941" role="img" aria-label="包含底层、中层和顶层管道的博物馆地下关卡" data-en-aria-label="Underground museum level with three pipe decks"></canvas>
-<div class="in-game-status"><span id="stage-badge">01 / 下水道入口</span><span class="hazard-badge" id="hazard-badge">♨ 3 处间歇喷气 · 🐀 警觉 0/3</span></div>
+<p class="pipe-controls-hint"><span><kbd>WASD / ↑↓←→</kbd> <span data-en="Move and climb">移动和爬梯</span></span><span><kbd>Space</kbd> <span data-en="Jump or dodge">跳跃或闪避</span></span><span><kbd>E</kbd> <span data-en="Open valve">打开阀门</span></span></p>
 <div class="mobile-control" aria-label="屏幕操作按钮" data-en-aria-label="On-screen controls"><button data-key="ArrowLeft" aria-label="向左" data-en-aria-label="Left">←</button><button data-key="ArrowUp" aria-label="向上" data-en-aria-label="Up">↑</button><button data-key="ArrowDown" aria-label="向下" data-en-aria-label="Down">↓</button><button data-key="ArrowRight" aria-label="向右" data-en-aria-label="Right">→</button><button data-key="Space" data-en="Jump">跳跃</button><button data-key="KeyE" data-en="Valve">阀门</button></div>
+<div class="result" id="pipe-caught" role="alert" hidden>
+  <section class="result-card">
+    <h2 data-en="You were caught">小偷被抓到了</h2>
+    <p data-en="Alert 100%">警戒 100%</p>
+    <button id="retry-pipe" class="btn primary" data-en="Restart">重新开始</button>
+  </section>
+</div>
 </div>
 <div class="result" id="load-error" role="alert" hidden><div class="result-card"><h2 data-en="Could not load the pipe room">管道场景加载失败</h2><p id="load-error-detail"></p><button id="reload-room" class="btn primary" data-en="Reload">重新加载</button></div></div>
 <div class="modal-backdrop" id="valve-modal" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-heading">

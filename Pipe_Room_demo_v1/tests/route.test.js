@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SEGMENTS,HAZARDS,VALVES,TOTAL_LENGTH,routeAt,movementForKey,clampAtLockedValve,hazardAt,jumpHeight,steamState,safeFromSteam,crawlRate,CRAWL_STROKE_SECONDS,reachedPipeExit} from '../src/route.js';
+import {SEGMENTS,HAZARDS,VALVES,TOTAL_LENGTH,routeAt,movementForKey,clampAtLockedValve,hazardAt,jumpHeight,steamState,resolveSteamMove,ratSpawnDelay,ratCanBite,crawlRate,CRAWL_STROKE_SECONDS,reachedPipeExit} from '../src/route.js';
 import {ValveGestureSequence,fistScore,palmRotation} from '../src/gesture-valve.js';
+const bodyWidth=92;
 test('pipe pieces form six and only six constrained path segments',()=>assert.equal(SEGMENTS.length,6));
 test('path starts at left lower inlet',()=>assert.deepEqual([routeAt(0).x,routeAt(0).y],[121,826]));
 test('path ends at right lower outlet',()=>assert.deepEqual([routeAt(TOTAL_LENGTH).x,routeAt(TOTAL_LENGTH).y],[1538,800]));
@@ -14,7 +15,11 @@ test('player cannot move off vertical ladder with left key',()=>assert.equal(mov
 test('player can climb with Up',()=>assert.equal(movementForKey(SEGMENTS[1].start+50,'up').delta,1));
 test('player can reverse at junction back onto previous segment',()=>assert.equal(movementForKey(SEGMENTS[1].start,'left').delta,-1));
 test('player cannot walk upward through bottom horizontal tube',()=>assert.equal(movementForKey(200,'up').delta,0));
-test('hazard only inside steam collision zone',()=>{const h=HAZARDS[0];assert.equal(hazardAt(h.center)?.id,h.id);assert.equal(hazardAt(h.center-110),null);});
+test('a gap narrower than half the body still supports the player',()=>{
+ const [start,end]=HAZARDS[0].opening,center=(start+end)/2;
+ assert.equal(hazardAt(center,(end-start)*2),null);
+ assert.equal(hazardAt(center,bodyWidth),HAZARDS[0]);
+});
 test('jump is an arc lasting 1.2 seconds',()=>{assert.equal(jumpHeight(-1),0);assert.ok(jumpHeight(.6)>69);assert.equal(jumpHeight(1.16),0);});
 test('each vent sprays for three seconds and pauses for three seconds',()=>{
  for(const hazard of HAZARDS){
@@ -33,8 +38,50 @@ test('the green exit completes the route before the ladder end once both valves 
  assert.equal(reachedPipeExit(TOTAL_LENGTH-33,opened),true);
  assert.equal(reachedPipeExit(TOTAL_LENGTH,{left:true}),false);
 });
-test('ON steam blocks airborne player, OFF steam still requires jump',()=>{const h=HAZARDS[0];assert.equal(safeFromSteam(h.center,.6,2.99),false);assert.equal(safeFromSteam(h.center,-1,3),false);assert.equal(safeFromSteam(h.center,.6,3),true);assert.equal(safeFromSteam(h.center,.6,6),false);});
-test('crawl strokes include a push and near-stationary rest',()=>{assert.ok(crawlRate(.06)>1.3);assert.ok(crawlRate(.33)<.15);assert.equal(CRAWL_STROKE_SECONDS,.42);});
+test('airborne movement clears an off vent but active steam causes a separate hit',()=>{
+ const s=HAZARDS[0].center;
+ assert.equal(resolveSteamMove(s,s,bodyWidth,true,2.99,null).hit,'steam');
+ assert.equal(resolveSteamMove(s,s,bodyWidth,true,3,null).hit,null);
+ assert.equal(resolveSteamMove(s,s,bodyWidth,false,3,null).hit,'gap');
+});
+test('every opening allows exactly half the grounded body over either rim',()=>{
+ for(const gap of HAZARDS){
+  const [start,end]=gap.opening;
+  const offTime=3.1-gap.phase;
+  for(const [rim,direction] of [[start,1],[end,-1]]){
+   assert.equal(resolveSteamMove(rim-direction*4,rim-direction,bodyWidth,false,offTime,null).hit,null);
+   assert.equal(resolveSteamMove(rim,rim,bodyWidth,false,offTime,null).hit,null);
+   const inside=rim+direction*.1;
+   assert.deepEqual(resolveSteamMove(rim,inside,bodyWidth,false,offTime,null),{s:inside,hit:'gap',failedGap:gap});
+   assert.equal(resolveSteamMove(rim,inside,bodyWidth,true,offTime,null).hit,null);
+  }
+ }
+});
+test('a failed landing can be retried in place or retreated from',()=>{
+ const gap=HAZARDS[0],s=gap.center-10;
+ assert.deepEqual(resolveSteamMove(s,s,bodyWidth,false,3.1,null),{s,hit:'gap',failedGap:gap});
+ assert.deepEqual(resolveSteamMove(s,s+4,bodyWidth,false,3.1,gap),{s,hit:null,failedGap:gap});
+ assert.equal(resolveSteamMove(s,s-4,bodyWidth,false,2,gap).s,s-4);
+ assert.deepEqual(resolveSteamMove(s,s+4,bodyWidth,true,3.1,gap),{s:s+4,hit:null,failedGap:null});
+});
+test('rat spawning uses a random delay between five and seven seconds',()=>{
+ assert.equal(ratSpawnDelay(()=>0),5);
+ assert.equal(ratSpawnDelay(()=>.25),5.5);
+ assert.equal(ratSpawnDelay(()=>1),7);
+});
+test('a rat can bite on the ground and on landing, but a raised jump clears it',()=>{
+ assert.equal(ratCanBite(100,120,-1),true);
+ assert.equal(ratCanBite(100,120,.35),false);
+ assert.equal(ratCanBite(100,120,1.1),true);
+ assert.equal(ratCanBite(100,136,-1),false);
+});
+test('crawl strokes keep moving at a steady average pace with a gentle variation',()=>{
+ const samples=Array.from({length:60},(_,index)=>crawlRate(index/60*CRAWL_STROKE_SECONDS));
+ assert.ok(Math.min(...samples)>.65 && Math.max(...samples)<.95);
+ assert.ok(Math.max(...samples)-Math.min(...samples)>.1);
+ assert.ok(Math.abs(samples.reduce((sum,rate)=>sum+rate,0)/samples.length-.79)<.01);
+ assert.ok(Math.abs(crawlRate(CRAWL_STROKE_SECONDS)-crawlRate(0))<.001);
+});
 test('both additional ladders align with the climb-only route segments',()=>{assert.equal(SEGMENTS[3].from[0],211);assert.equal(SEGMENTS[3].to[0],211);assert.equal(SEGMENTS[5].from[0],1538);assert.equal(SEGMENTS[5].to[0],1538);assert.equal(movementForKey(SEGMENTS[5].start+50,'down').delta,1);assert.equal(movementForKey(SEGMENTS[5].start+50,'right').delta,0);});
 test('empty hand is not a fist',()=>assert.equal(fistScore(null).fist,false));
 test('rotating invalid landmark array returns null',()=>assert.equal(palmRotation([]),null));

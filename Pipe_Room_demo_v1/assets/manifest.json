@@ -34,6 +34,7 @@
       "original_y": 193,
       "width": 101,
       "height": 92,
+      "top_rail_cutout": [7, 0, 89, 10],
       "alpha": true
     },
     {
@@ -82,6 +83,7 @@
       "original_y": 436,
       "width": 109,
       "height": 84,
+      "top_rail_cutout": [6, 0, 95, 10],
       "alpha": true
     },
     {
@@ -130,6 +132,7 @@
       "original_y": 786,
       "width": 122,
       "height": 84,
+      "top_rail_cutout": [11, 0, 100, 10],
       "alpha": true
     },
     {

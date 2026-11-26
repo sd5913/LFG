@@ -16,7 +16,8 @@ const angleDelta = (next, previous) => {
 
 export class UnlockMachine {
   constructor() { this.reset(); }
-  reset() { this.stepIndex = 0; this.holdMs = 0; this.lastTime = null; this.lastMatchedAt = null; this.lastAngle = null; this.rotation = 0; this.lastRotationAt = null; this.unlocked = false; }
+  reset() { this.stepIndex = 0; this.unlocked = false; this.clearAttempt(); }
+  clearAttempt() { this.holdMs = 0; this.lastTime = null; this.lastMatchedAt = null; this.lastAngle = null; this.rotation = 0; this.lastRotationAt = null; }
   get step() { return STEPS[Math.min(this.stepIndex, STEPS.length - 1)]; }
   snapshot() { return { stepIndex: this.stepIndex, unlocked: this.unlocked, progress: this.unlocked ? 1 : this.stepIndex === 3 ? clamp(Math.abs(this.rotation) / ROTATION_TARGET) : clamp(this.holdMs / this.step.holdMs), rotationDegrees: Math.round(Math.abs(this.rotation) * 180 / Math.PI) }; }
   update({ gesture = 'NONE', angle = null, now = 0 } = {}) {

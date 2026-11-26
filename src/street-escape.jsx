@@ -1,4 +1,6 @@
 import { publicAsset } from './public-asset.js';
+import { useFrameCamera, useGameCamera } from './use-game-camera.js';
+import { GameHudControls } from './gameplay-hud.jsx';
 import { useFrameLanguage, useGameText } from './use-game-language.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createStreetRoute, fallsIntoStreetGap, MODULE_TYPES, ROAD_GAP_ART_WIDTH, ROAD_GAP_LEFT_LIP, ROAD_GAP_RIGHT_LIP, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
@@ -25,7 +27,6 @@ const JUMP_PLAYER_ART = publicAsset('assets/player-actions/jump.png');
 const CROUCH_PLAYER_ART = publicAsset('assets/player-actions/crouch.png');
 const movementDirection = ({ left, right }) => Number(right) - Number(left);
 const isSpaceInput = ({ code, key }) => code === 'Space' || key === ' ';
-const hasLiveVideo = (stream) => stream?.getVideoTracks().some((track) => track.readyState === 'live');
 
 function createHeldInputs() {
   return { controlHeld: false, crouchOnLanding: false, crouchUntil: 0, left: false, right: false };
@@ -118,7 +119,7 @@ function createEscapeRuntime(initialAlertLevel) {
   };
 }
 
-export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
+export function StreetEscape({ onExit, alertLevel = 0 }) {
   const t = useGameText();
   const routeRef = useRef(createStreetRoute(freshSeed()));
   const runtimeRef = useRef(createEscapeRuntime(alertLevel));
@@ -126,64 +127,17 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
   const challengeRef = useRef(null);
   const syncChallengeLanguage = useFrameLanguage(challengeRef);
   const stageRef = useRef(null);
-  const ownedCameraRef = useRef(null);
-  const openingCameraRef = useRef(false);
+  const { status: cameraStatus } = useGameCamera();
+  const cameraRequestingRef = useRef(false);
   const [route, setRoute] = useState(routeRef.current);
   const [view, setView] = useState(() => buildView(routeRef.current, runtimeRef.current));
-  const [inputMode, setInputMode] = useState(() => hasLiveVideo(cameraStream) ? 'camera' : 'demo');
-  const [cameraLoading, setCameraLoading] = useState(false);
-  const [cameraError, setCameraError] = useState('');
-  const liveCamera = hasLiveVideo(cameraStream) ? cameraStream :
-    hasLiveVideo(ownedCameraRef.current) ? ownedCameraRef.current : null;
+  const inChallenge = view.phase === 'challenge';
+  const syncChallengeCamera = useFrameCamera(challengeRef, inChallenge);
 
-  useEffect(() => () => {
-    openingCameraRef.current = false;
-    ownedCameraRef.current?.getTracks().forEach((track) => track.stop());
-  }, []);
-
-  async function enableChallengeCamera() {
-    if (openingCameraRef.current) return;
-    stageRef.current?.focus();
-    setCameraError('');
-    if (liveCamera) {
-      setInputMode('camera');
-      return;
-    }
-
-    openingCameraRef.current = true;
-    setCameraLoading(true);
-    heldRef.current = createHeldInputs();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false,
-      });
-      if (!openingCameraRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      ownedCameraRef.current = stream;
-      setInputMode('camera');
-    } catch {
-      if (openingCameraRef.current) {
-        setCameraError(['摄像头无法开启。请检查权限，或使用无摄像头演示。', 'Camera unavailable. Check permissions or use the camera-free demo.']);
-        setInputMode('demo');
-      }
-    } finally {
-      if (openingCameraRef.current) {
-        openingCameraRef.current = false;
-        setCameraLoading(false);
-      }
-    }
-  }
-
-  function selectChallengeDemo() {
-    ownedCameraRef.current?.getTracks().forEach((track) => track.stop());
-    ownedCameraRef.current = null;
-    setCameraError('');
-    setInputMode('demo');
-    stageRef.current?.focus();
-  }
+  useEffect(() => {
+    cameraRequestingRef.current = cameraStatus === 'requesting';
+    if (cameraRequestingRef.current) heldRef.current = createHeldInputs();
+  }, [cameraStatus]);
 
   const restart = useCallback(() => {
     const nextRoute = createStreetRoute(freshSeed());
@@ -221,7 +175,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
     const keyDown = (event) => {
       const runtime = runtimeRef.current;
       const running = runtime.phase === 'running';
-      if ((!running && runtime.phase !== 'recovering') || openingCameraRef.current) return;
+      if ((!running && runtime.phase !== 'recovering') || cameraRequestingRef.current || event.target instanceof HTMLButtonElement) return;
       if (event.code === 'KeyA') { heldRef.current.left = true; runtime.facing = 'left'; event.preventDefault(); }
       if (event.code === 'KeyD') { heldRef.current.right = true; runtime.facing = 'right'; event.preventDefault(); }
       if (isSpaceInput(event)) {
@@ -269,7 +223,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
       const delta = Math.min((now - previous) / 1000, .05);
       previous = now;
       const active = runtime.phase === 'running' || runtime.phase === 'recovering';
-      if (active && !openingCameraRef.current) {
+      if (active && !cameraRequestingRef.current) {
         const held = heldRef.current;
         const direction = movementDirection(held);
         if (runtime.elapsed > 0 || direction > 0) runtime.elapsed += delta;
@@ -332,7 +286,6 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
-  const inChallenge = view.phase === 'challenge';
   const recovering = view.phase === 'recovering';
   const playerBottom = 27 + ((-view.y) / VIEW_HEIGHT) * 100;
   const roadOffset = -((view.camera % ROAD_TILE_WIDTH) / (VIEW_WIDTH - ROAD_TILE_WIDTH)) * 100;
@@ -354,9 +307,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
         const frame = event.currentTarget;
         syncChallengeLanguage();
         frame.focus();
-        frame.contentWindow.dispatchEvent(new CustomEvent('street-rps-start', {
-          detail: { stream: inputMode === 'camera' ? liveCamera : null },
-        }));
+        syncChallengeCamera();
       }}
     />
   ) : (
@@ -392,6 +343,27 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
       </div>
       {view.guardX !== null && <img className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }} src={publicAsset('assets/guard/right.png')} alt={t('正在追赶的保安', 'Guard in pursuit')} />}
 
+      <p className="escape-objective">
+        <b>A / D</b> {t('移动', 'Move')} · <b>Space</b> {t('起跳 / 连按大跳', 'Jump / double-tap for a high jump')} · <b>Ctrl</b> {t('下蹲', 'Duck')} ·{' '}
+        {recovering ? <b role="status">{t('撞上障碍 · 警戒 +30% · 恢复中', 'Obstacle hit · Alert +30% · Recovering')}</b> : <>
+          {view.guardStunned && <b role="status">{view.lastChallengeOutcome === 'lose' ? t('警戒上升，快跑！', 'Alert increased. Run!') : t('保安已被制住，快跑！', 'Guard stunned. Run!')}　·　</b>}
+          {view.bigJump && <b>{t('大跳已触发　·　', 'High jump　·　')}</b>}
+          {activeInstruction ? t(...moduleLabel[activeInstruction.type]) : t('接应车就在前方', 'Getaway van ahead')}
+        </>}
+      </p>
+
+      {(view.phase === 'fell' || view.phase === 'arrested') && <section className="escape-result failure" role="alert">
+        <span>{t('逃脱中断', 'Escape interrupted')}</span><strong>{view.phase === 'fell' ? t('掉进断路了', 'You fell into the gap') : t('小偷被逮捕', 'You were caught')}</strong><p>{t('这条夜路会重新生成。', 'A new route will be generated.')}</p><button type="button" onClick={restart}>{t('重新逃脱', 'Try again')}</button>
+      </section>}
+      {view.phase === 'complete' && <section className="escape-result success" role="alert">
+        <span>{t('任务完成', 'MISSION COMPLETE')}</span><strong>{t('成功逃离博物馆', 'You escaped the museum')}</strong><p>{t('宝藏已安全装上接应车。', 'The treasure is safely in the getaway van.')}</p><button type="button" onClick={restart}>{t('挑战新的逃脱路线', 'Try a new route')}</button><button type="button" className="quiet" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>
+      </section>}
+    </>
+  );
+
+  return <main className="escape-app">
+    <section ref={stageRef} className="escape-stage" tabIndex={-1} aria-label={t('Museum Heist 第三关：街头逃脱', 'Museum Heist Stage 3: Street Escape')}>
+      {scene}
       <header className="escape-top-hud" aria-label={t('逃脱状态栏', 'Escape HUD')}>
         <img className="escape-top-hud-background" src={publicAsset('stealth-ui/top_hud_background.png')} alt="" />
         <div className="escape-alert">
@@ -414,37 +386,10 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
         <div className="escape-loot-hud">
           <img src={publicAsset('stealth-ui/treasure_chest.png')} alt={t('已取得的宝藏', 'Stolen treasure')} />
           <span><b>{Math.round(progress)}%</b><small>{formatClock(view.elapsed)}</small></span>
-          <button type="button" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>
+          {!inChallenge && <button type="button" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>}
         </div>
+        <GameHudControls onPointerUse={() => (challengeRef.current ?? stageRef.current)?.focus()} />
       </header>
-      <div className="escape-rps-controls" aria-label={t('猜拳输入方式', 'Rock, paper, scissors input mode')}>
-        <button type="button" onClick={enableChallengeCamera} disabled={cameraLoading || (inputMode === 'camera' && Boolean(liveCamera))}>
-          {cameraLoading ? t('正在开启摄像头…', 'Starting camera…') : inputMode === 'camera' && liveCamera ? t('摄像头已开启', 'Camera on') : t('开启摄像头', 'Enable camera')}
-        </button>
-        <button type="button" onClick={selectChallengeDemo} disabled={cameraLoading} aria-pressed={inputMode === 'demo' || !liveCamera}>{t('无摄像头演示', 'Camera-free demo')}</button>
-        {cameraError && <span role="status">{t(...cameraError)}</span>}
-      </div>
-      <p className="escape-objective">
-        <b>A / D</b> {t('移动', 'Move')} · <b>Space</b> {t('起跳 / 连按大跳', 'Jump / double-tap for a high jump')} · <b>Ctrl</b> {t('下蹲', 'Duck')} ·{' '}
-        {recovering ? <b role="status">{t('撞上障碍 · 警戒 +30% · 恢复中', 'Obstacle hit · Alert +30% · Recovering')}</b> : <>
-          {view.guardStunned && <b role="status">{view.lastChallengeOutcome === 'lose' ? t('警戒上升，快跑！', 'Alert increased. Run!') : t('保安已被制住，快跑！', 'Guard stunned. Run!')}　·　</b>}
-          {view.bigJump && <b>{t('大跳已触发　·　', 'High jump　·　')}</b>}
-          {activeInstruction ? t(...moduleLabel[activeInstruction.type]) : t('接应车就在前方', 'Getaway van ahead')}
-        </>}
-      </p>
-
-      {(view.phase === 'fell' || view.phase === 'arrested') && <section className="escape-result failure" role="alert">
-        <span>{t('逃脱中断', 'Escape interrupted')}</span><strong>{view.phase === 'fell' ? t('掉进断路了', 'You fell into the gap') : t('小偷被逮捕', 'You were caught')}</strong><p>{t('这条夜路会重新生成。', 'A new route will be generated.')}</p><button type="button" onClick={restart}>{t('重新逃脱', 'Try again')}</button>
-      </section>}
-      {view.phase === 'complete' && <section className="escape-result success" role="alert">
-        <span>{t('任务完成', 'MISSION COMPLETE')}</span><strong>{t('成功逃离博物馆', 'You escaped the museum')}</strong><p>{t('宝藏已安全装上接应车。', 'The treasure is safely in the getaway van.')}</p><button type="button" onClick={restart}>{t('挑战新的逃脱路线', 'Try a new route')}</button><button type="button" className="quiet" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>
-      </section>}
-    </>
-  );
-
-  return <main className="escape-app">
-    <section ref={stageRef} className="escape-stage" tabIndex={-1} aria-label={t('Museum Heist 第三关：街头逃脱', 'Museum Heist Stage 3: Street Escape')}>
-      {scene}
     </section>
     <p className="escape-note" style={{ visibility: inChallenge ? 'hidden' : undefined }}>{t('每次进入都会生成新的单向逃脱路线 · 像素素材使用原始硬边缩放', 'A new escape route is generated each run · Crisp pixel art')}</p>
   </main>;

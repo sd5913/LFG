@@ -3,12 +3,14 @@
 :root { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; color: #f3dcaa; background: #08171e; color-scheme: dark; }
 * { box-sizing: border-box; }
 body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; background: #08171e; }
-.pipe-room-frame { display: block; width: 100%; height: 100dvh; border: 0; }
-.game-language { display: flex; position: fixed; z-index: 100; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); background: #081927; border: 1px solid #a38c67; border-radius: 4px; }
-.game-language button { min-width: 40px; min-height: 28px; padding: 3px 6px; border: 0; background: transparent; color: #ead6ad; cursor: pointer; font-size: 12px; }
+.pipe-stage-shell { background: #071322; }
+.pipe-room-frame { position: absolute; inset: var(--gameplay-hud-height) 0 0; display: block; width: 100%; height: calc(100% - var(--gameplay-hud-height)); border: 0; }
+.game-hud-controls { position: absolute; z-index: 4; inset: 0 51% 0 30%; display: flex; align-items: center; justify-content: center; gap: .7em; font: 700 clamp(6px, .9cqw, 14px) ui-monospace, monospace; }
+.game-language { display: flex; background: #081927; border: 1px solid #a38c67; border-radius: 4px; }
+.game-language button { min-width: 2.3em; min-height: 2.2em; padding: .22em .4em; border: 0; background: transparent; color: #ead6ad; font: inherit; cursor: pointer; pointer-events: auto; }
 .game-language button[aria-pressed='true'] { background: #e8c683; color: #122634; font-weight: 800; }
 .game-shell { display: grid; width: 100vw; min-height: 100vh; place-items: center; background: #08171e; }
-.stage-shell { position: relative; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #0b202a; }
+.stage-shell { --gameplay-hud-height: 10.4%; position: relative; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #0b202a; }
 .game-host { position: absolute; inset: 0; overflow: hidden; }
 .game-host canvas { display: block; image-rendering: pixelated; outline: 0; }
 .room-hud { position: absolute; top: 0; right: 0; left: 0; height: 9.4079%; pointer-events: none; color: #f3dcaa; font-family: ui-monospace, monospace; }
@@ -19,10 +21,15 @@ body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; backgro
 .hud-keys { top: 64%; right: 1.75%; color: #8facb6; font-size: clamp(4px, .8125cqw, 13px); }
 .hud-node { top: 70%; color: #6b8994; font-size: clamp(4px, .8125cqw, 13px); transform: translateX(-50%); }
 .hud-node.active { color: #f3dcaa; }
-.hud-camera { position: absolute; top: 18%; left: 17.2%; z-index: 2; min-height: 2.2em; border: 1px solid #8facb6; padding: .28em .55em; background: #102a34e8; color: #e7d4a8; font: 700 clamp(5px, .78cqw, 12px) ui-monospace, monospace; letter-spacing: .03em; pointer-events: auto; cursor: pointer; }
+.hud-camera { flex-shrink: 0; min-height: 2.2em; border: 1px solid #8facb6; padding: .28em .55em; background: #102a34e8; color: #e7d4a8; font: inherit; white-space: nowrap; pointer-events: auto; cursor: pointer; }
 .hud-camera:hover:not(:disabled) { border-color: #f3dcaa; background: #1b3b47; }.hud-camera.ready { border-color: #82c7a2; color: #a9e7bf; }.hud-camera:disabled { opacity: .9; }
-.hud-camera-error { top: 68%; left: 13.2%; max-width: 23%; color: #ef9b80; font-size: clamp(4px, .58cqw, 9px); text-align: left; }
-.gameplay-hud { height: 10.4%; font-family: 'Noto Sans SC', ui-monospace, monospace; }
+.game-hud-controls .hud-camera-error { position: absolute; top: 100%; left: 0; width: 100%; padding: .45em; color: #ffd0bd; background: #16232bea; white-space: normal; line-height: 1.2; text-align: center; }
+@container (max-width: 570px) {
+  .game-hud-controls { flex-wrap: wrap; align-content: center; gap: 1px 3px; line-height: 1; }
+  .game-hud-controls button { min-height: 1.45em; padding-block: .12em; }
+}
+.gameplay-hud { height: var(--gameplay-hud-height, 10.4%); font-family: 'Noto Sans SC', ui-monospace, monospace; }
+.room-hud.gameplay-hud { z-index: 30; container-type: inline-size; }
 .gameplay-hud-background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; image-rendering: pixelated; }
 .gameplay-alert { position: absolute; top: 9%; left: 2.3%; display: flex; align-items: center; gap: .55%; width: 29%; height: 80%; }
 .gameplay-alert img, .gameplay-route img { image-rendering: pixelated; }
@@ -39,9 +46,7 @@ body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; backgro
 .gameplay-room-node.current > img:first-child { filter: drop-shadow(0 0 7px #ff6b5f); }
 .gameplay-player-marker { position: absolute !important; z-index: 2; bottom: -35%; left: 50%; width: 56% !important; height: 53% !important; object-fit: contain; transform: translateX(-50%); filter: drop-shadow(0 0 5px #ff725f); }
 .gameplay-treasure { position: relative; z-index: 1; width: 12%; height: 100%; }
-.gameplay-hud .hud-camera { top: 52%; left: 31.5%; z-index: 4; font-size: clamp(4px, .63cqw, 10px); }
-.gameplay-hud .hud-camera-error { top: 73%; left: 31.5%; max-width: 17%; }
-.game-over-panel { position: absolute; z-index: 30000; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .45em; background: #07141de8; color: #ffe0ad; font-family: 'Press Start 2P', 'Noto Sans SC', monospace; text-align: center; }
+.game-over-panel { position: absolute; z-index: 30000; inset: var(--gameplay-hud-height) 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .45em; background: #07141de8; color: #ffe0ad; font-family: 'Press Start 2P', 'Noto Sans SC', monospace; text-align: center; }
 .game-over-panel span { color: #ff6c62; font-size: clamp(20px, 4cqw, 58px); text-shadow: 3px 3px #572e34; }
 .game-over-panel strong { font: 900 clamp(18px, 2.5cqw, 40px) 'Noto Sans SC', sans-serif; }
 .game-over-panel button { margin-top: 1em; border: 2px solid #f1cd91; padding: .75em 1.1em; background: #173440; color: #ffe0ad; font: 800 clamp(11px, 1.25cqw, 18px) 'Noto Sans SC', sans-serif; cursor: pointer; }
@@ -58,7 +63,7 @@ body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; backgro
 body { min-width: 320px; min-height: 100vh; margin: 0; background: #07141d; }
 button { font: inherit; }
 .stealth-shell { display: grid; min-height: 100vh; place-items: center; padding: 1.25rem; background: radial-gradient(circle at 50% 15%, #264d5b 0, #0b1b26 63%, #060e15 100%); }
-.stealth-game { position: relative; width: min(100%, 1672px); overflow: hidden; aspect-ratio: 1672 / 941; isolation: isolate; background: #0a2232; box-shadow: 0 1.25rem 5rem #000b; }
+.stealth-game { position: relative; width: min(100%, 1672px); overflow: hidden; aspect-ratio: 16 / 9; isolation: isolate; background: #0a2232; box-shadow: 0 1.25rem 5rem #000b; }
 .stealth-game img { image-rendering: pixelated; user-select: none; }
 .museum-backplate { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .scene-dim { position: absolute; z-index: 1; inset: 108px 0 0; background: rgba(4, 18, 28, .4); }
@@ -76,8 +81,8 @@ button { font: inherit; }
 
 /* Treasure hand-unlock view. The supplied static shell defines the visual
    frame; these overlays are only the responsive, live game states. */
-.unlock-app { display: grid; width: 100vw; min-height: 100vh; place-items: center; padding: clamp(12px, 2vw, 30px); background: radial-gradient(circle at 50% 0, #183750 0, #071522 51%, #030a12 100%); }
-.unlock-stage { position: relative; width: min(100%, 1671px); overflow: hidden; aspect-ratio: 1671 / 941; border-radius: clamp(5px, .5vw, 12px); box-shadow: 0 22px 70px #000a; isolation: isolate; }
+.unlock-app { background: radial-gradient(circle at 50% 0, #183750 0, #071522 51%, #030a12 100%); }
+.unlock-stage { position: absolute; inset: var(--gameplay-hud-height) 0 0; overflow: hidden; isolation: isolate; }
 .unlock-stage img { image-rendering: pixelated; user-select: none; }.unlock-static-shell { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .unlock-top-cards, .unlock-feedback, .unlock-dial, .unlock-instruction, .unlock-progress-track, .unlock-stage-controls, .unlock-message { position: absolute; z-index: 2; }
 .unlock-top-cards { inset: 0 0 auto; height: 19%; }.unlock-gesture-card { position: absolute; top: 2.55%; width: 9.16%; aspect-ratio: 153 / 143; }.unlock-gesture-card > img:first-child { display: block; width: 100%; height: 100%; }.unlock-selection-frame { position: absolute; inset: -2% -2.5%; width: 105%; height: 109%; opacity: 0; transition: opacity .15s ease; }.unlock-completed-check { position: absolute; right: -22%; bottom: -13%; width: 44.5%; opacity: 0; transform: scale(.75); transition: opacity .15s ease, transform .15s ease; }.unlock-gesture-card.selected .unlock-selection-frame, .unlock-gesture-card.completed .unlock-completed-check { opacity: 1; }.unlock-gesture-card.completed .unlock-completed-check { transform: scale(1); }
@@ -87,15 +92,13 @@ button { font: inherit; }
 .unlock-dial { top: 19%; left: 33%; width: 34.47%; aspect-ratio: 1; }.unlock-dial-rotor { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: center; transition: transform .12s linear, filter .2s ease; }.unlock-dial.active .unlock-dial-rotor { filter: drop-shadow(0 0 16px #ffad36aa); }.unlock-dial-hub { position: absolute; z-index: 2; top: 36.1%; left: 32.95%; width: 34.55%; }.unlock-dial-pointer { position: absolute; z-index: 3; top: -.85%; left: 42%; width: 15.28%; }.unlock-dial-cue { position: absolute; z-index: 4; right: 4%; bottom: 10%; width: 21%; opacity: 0; filter: drop-shadow(0 0 9px #ffaf2f); transform: translateY(5%) scale(.88); transition: opacity .2s ease, transform .2s ease; }.unlock-dial.rotating .unlock-dial-cue { opacity: 1; transform: translateY(0) scale(1); animation: unlock-rotation-cue 1s ease-in-out infinite; }@keyframes unlock-rotation-cue { 50% { filter: drop-shadow(0 0 16px #ffd05a); transform: translateY(-3%) scale(1.04); } }
 .unlock-instruction { top: 30%; left: 76.84%; width: 17.4%; height: 32.5%; overflow: hidden; }.unlock-target-icon { position: absolute; top: 23%; left: 34%; width: 31%; filter: drop-shadow(0 0 6px #ffa42688); }.unlock-target-rotate, .unlock-rotation-arrow { position: absolute; opacity: 0; transition: opacity .2s ease; }.unlock-target-rotate { top: 6%; left: 4%; width: 92%; height: 86%; }.unlock-rotation-arrow { top: 6%; left: 42%; width: 55%; height: 86%; }.unlock-instruction.rotate .unlock-target-icon { opacity: 0; }.unlock-instruction.rotate .unlock-target-rotate, .unlock-instruction.rotate .unlock-rotation-arrow { opacity: 1; }.unlock-instruction-copy { position: absolute; z-index: 2; right: 6%; bottom: 6%; left: 6%; color: #d9eced; text-align: center; text-shadow: 0 2px 4px #00111b; }.unlock-instruction-copy strong { display: block; margin: 2% 0; color: #ffcf62; font-size: clamp(8px, .76vw, 13px); }.unlock-instruction-copy small { display: block; font-size: clamp(5px, .52vw, 9px); }
 .unlock-progress-track { top: 82.6%; left: 19.8%; width: 59.8%; height: 13%; }.unlock-progress-fill-mask { position: absolute; top: 36%; right: 2%; left: 2%; height: 30%; overflow: hidden; border-radius: 100px; }.unlock-progress-fill-mask img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: left center; transition: transform .16s ease-out; }.unlock-progress-nodes { position: absolute; inset: 0; }.unlock-progress-nodes img { position: absolute; top: 1%; width: 12.7%; aspect-ratio: 127 / 123; transition: transform .15s ease; }.unlock-progress-nodes img.selected { transform: scale(1.14); }
-.unlock-stage-controls { z-index: 5; top: 21%; left: 2.7%; display: flex; align-items: center; gap: .45rem; max-width: 29%; }.unlock-stage-controls button { border: 1px solid #f7bd4d; border-radius: 4px; padding: clamp(3px, .44vw, 7px) clamp(5px, .67vw, 11px); background: #6d2e1fbf; color: #fff0c6; box-shadow: 0 0 12px #f3a52c55; font: 800 clamp(6px, .62vw, 11px) ui-monospace, monospace; letter-spacing: .03em; cursor: pointer; }.unlock-stage-controls button:hover:not(:disabled) { background: #9b4425; }.unlock-stage-controls .unlock-scan-toggle.scanning { border-color: #62e9a0; background: #1c674b; color: #bdffdd; }.unlock-stage-controls .unlock-reset-toggle { border-color: #738da1; background: #163c58c9; color: #caefff; box-shadow: none; }.unlock-stage-controls .unlock-exit-toggle { border-color: #a88069; background: #382522d4; color: #f0ccac; box-shadow: none; }.unlock-stage-controls span { color: #9dc9d8; font-size: clamp(5px, .5vw, 9px); text-shadow: 0 1px 3px #000; white-space: nowrap; }
-.unlock-message { z-index: 4; top: 76.8%; right: 25%; left: 25%; min-height: 2em; color: #ffe19b; font-size: clamp(7px, .65vw, 12px); font-weight: 700; letter-spacing: .06em; text-align: center; text-shadow: 0 2px 6px #1d0505; }.unlock-message.success { color: #89ffc0; text-shadow: 0 0 12px #47e992; }.unlock-sensor-video { position: fixed; right: -2px; bottom: -2px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }.unlock-privacy-note { margin: clamp(8px, 1vw, 14px) 0 0; color: #90aab8; font-size: 11px; text-align: center; }
+.unlock-stage-controls { z-index: 5; top: 21%; left: 2.7%; display: flex; align-items: center; gap: .45rem; max-width: 29%; }.unlock-stage-controls button { border: 1px solid #f7bd4d; border-radius: 4px; padding: clamp(3px, .44vw, 7px) clamp(5px, .67vw, 11px); background: #6d2e1fbf; color: #fff0c6; box-shadow: 0 0 12px #f3a52c55; font: 800 clamp(6px, .62vw, 11px) ui-monospace, monospace; letter-spacing: .03em; cursor: pointer; }.unlock-stage-controls button:hover:not(:disabled) { background: #9b4425; }.unlock-stage-controls .unlock-reset-toggle { border-color: #738da1; background: #163c58c9; color: #caefff; box-shadow: none; }.unlock-stage-controls .unlock-exit-toggle { border-color: #a88069; background: #382522d4; color: #f0ccac; box-shadow: none; }.unlock-stage-controls span { color: #9dc9d8; font-size: clamp(5px, .5vw, 9px); text-shadow: 0 1px 3px #000; white-space: nowrap; }
+.unlock-message { z-index: 4; top: 76.8%; right: 25%; left: 25%; min-height: 2em; color: #ffe19b; font-size: clamp(7px, .65vw, 12px); font-weight: 700; letter-spacing: .06em; text-align: center; text-shadow: 0 2px 6px #1d0505; }.unlock-message.success { color: #89ffc0; text-shadow: 0 0 12px #47e992; }.unlock-sensor-video { position: fixed; right: -2px; bottom: -2px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .unlock-chest-sequence { position: absolute; z-index: 20; inset: 0; overflow: hidden; background: #06131f; isolation: isolate; }.unlock-alert-paused { position: absolute; z-index: 8; top: 3.5%; right: 4.5%; padding: .5em .8em; border: 1px solid #72e5af; border-radius: 4px; background: #0b382be6; color: #b6ffdb; font: 800 clamp(8px, .86vw, 15px) ui-monospace, monospace; letter-spacing: .08em; text-shadow: 0 1px 4px #00140b; }.unlock-chest-animation { position: absolute; inset: 0; overflow: hidden; }.unlock-chest-animation > img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }.unlock-chest-closed { z-index: 0; }.unlock-chest-open { z-index: 1; opacity: 0; clip-path: inset(43% 0 0); }.unlock-chest-lid { position: absolute; z-index: 3; top: 20%; left: 15%; width: 70%; height: 23%; overflow: hidden; opacity: 0; perspective: 900px; transform-origin: center bottom; }.unlock-chest-lid img { position: absolute; top: -86.96%; left: -21.43%; width: 142.86%; height: 434.78%; max-width: none; image-rendering: pixelated; }.unlock-chest-dial { position: absolute; z-index: 2; top: 19%; left: 33%; width: 34.47%; aspect-ratio: 1; }.unlock-chest-dial img { position: absolute; }.unlock-chest-rotor { inset: 0; width: 100%; height: 100%; transform-origin: center; }.unlock-chest-hub { z-index: 2; top: 36.1%; left: 32.95%; width: 34.55%; }.unlock-chest-pointer { z-index: 3; top: -.85%; left: 42%; width: 15.28%; }.unlock-chest-sequence.animation .unlock-chest-rotor { animation: chest-unlock-spin 1s steps(12, end) both; }.unlock-chest-sequence.animation .unlock-chest-dial { animation: chest-unlock-dial-vanish .01s steps(1, end) 1s both; }.unlock-chest-sequence.animation .unlock-chest-open, .unlock-chest-sequence.success .unlock-chest-open { animation: chest-unlock-reveal .9s steps(10, end) 1.1s both; }.unlock-chest-sequence.animation .unlock-chest-lid, .unlock-chest-sequence.success .unlock-chest-lid { animation: chest-unlock-lift .9s steps(10, end) 1.1s both; }.unlock-chest-sequence.success .unlock-chest-open { opacity: 1; clip-path: inset(0); animation: none; }.unlock-chest-sequence.success .unlock-chest-dial { opacity: 0; }.unlock-chest-sequence.success .unlock-chest-lid { opacity: 0; }.unlock-success-card { position: absolute; z-index: 7; top: 50%; left: 50%; display: grid; min-width: 34%; max-width: 56%; padding: clamp(18px, 2.4vw, 38px) clamp(25px, 4vw, 72px); border: clamp(2px, .3vw, 5px) solid #f4c459; background: linear-gradient(135deg, #071a27e8, #153e45e8); box-shadow: 0 0 0 8px #06131fb8, 0 0 44px #ffd164bb; color: #fff0c1; text-align: center; transform: translate(-50%, -50%); animation: chest-success-in .35s ease-out both; }.unlock-success-card > span { color: #88ffc4; font: 800 clamp(9px, 1vw, 17px) ui-monospace, monospace; letter-spacing: .12em; }.unlock-success-card strong { margin-top: .45em; color: #ffe084; font-size: clamp(21px, 2.8vw, 49px); text-shadow: 0 3px #61311e; }.unlock-success-card p { margin: .65em 0 1.2em; color: #d6fff0; font-size: clamp(12px, 1.25vw, 21px); font-weight: 700; }.unlock-success-card button { justify-self: center; border: 2px solid #fff0ac; padding: .72em 1.25em; background: #a3442d; color: #fff5d1; box-shadow: 0 3px #55231d, 0 0 14px #ffb84999; font: 800 clamp(11px, 1.08vw, 18px) ui-monospace, monospace; cursor: pointer; }.unlock-success-card button:hover { background: #c85c34; }@keyframes chest-unlock-spin { to { transform: rotate(360deg); } }@keyframes chest-unlock-dial-vanish { to { opacity: 0; } }@keyframes chest-unlock-reveal { 0% { opacity: 0; clip-path: inset(43% 0 0); } 1% { opacity: 1; } 100% { opacity: 1; clip-path: inset(0); } }@keyframes chest-unlock-lift { 0% { opacity: 0; transform: none; } 1% { opacity: 1; } 75% { opacity: 1; transform: translateY(-58%) rotateX(65deg); } 100% { opacity: 0; transform: translateY(-58%) rotateX(65deg); } }@keyframes chest-success-in { from { opacity: 0; transform: translate(-50%, -44%) scale(.9); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
-@media (max-width: 720px) { .unlock-app { align-items: start; padding-top: 4vh; }.unlock-stage { width: 1671px; max-width: none; transform-origin: top left; transform: scale(calc((100vw - 24px) / 1671)); margin-bottom: calc((100vw - 24px) * -0.563); }.unlock-privacy-note { font-size: 9px; } }
-
 /* Stage 03 — a deliberately dark, hard-edged side-scrolling street. */
-.escape-guard-challenge { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; background: #061624; }
+.escape-guard-challenge { position: absolute; inset: var(--escape-hud-height) 0 0; display: block; width: 100%; height: calc(100% - var(--escape-hud-height)); border: 0; background: #061624; }
 .escape-app { display: grid; min-height: 100vh; place-items: center; padding: clamp(10px, 2vw, 30px); overflow: hidden; background: radial-gradient(circle at 50% 5%, #123852, #071827 52%, #020911); color: #d9ecf1; }
-.escape-stage { --road-top: 71.5%; --thief-height: 15%; position: relative; width: min(100%, 1600px); overflow: hidden; aspect-ratio: 16 / 9; isolation: isolate; background: #071a29; box-shadow: 0 24px 80px #000b; image-rendering: pixelated; }
+.escape-stage { --escape-hud-height: 12.8%; --road-top: 71.5%; --thief-height: 15%; position: relative; width: min(100%, 1600px); overflow: hidden; aspect-ratio: 16 / 9; isolation: isolate; background: #071a29; box-shadow: 0 24px 80px #000b; image-rendering: pixelated; }
 .escape-stage img { position: absolute; display: block; max-width: none; image-rendering: pixelated; user-select: none; }
 .escape-background { position: absolute; z-index: 0; inset: 0; background-color: #0a263a; background-image: url('/street-escape/street-night-loop-dark.png'); background-repeat: repeat-x; background-size: auto 100%; image-rendering: pixelated; }
 .escape-night-wash { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, #00111c52, transparent 35%, #03131e33 70%, #00111c66), linear-gradient(180deg, #02101f40, transparent 47%, #0209126b); pointer-events: none; }
@@ -171,7 +174,7 @@ button { font: inherit; }
 }
 
 /* The escape HUD shares the visual system and source assets of the museum map. */
-.escape-top-hud { position: absolute; z-index: 25; inset: 0 0 auto; height: 12.8%; color: #f7dba6; font-family: 'Noto Sans SC', ui-monospace, monospace; pointer-events: none; }
+.escape-top-hud { position: absolute; z-index: 55; inset: 0 0 auto; height: var(--escape-hud-height); container-type: inline-size; color: #f7dba6; font-family: 'Noto Sans SC', ui-monospace, monospace; pointer-events: none; }
 .escape-top-hud img { image-rendering: pixelated; }
 .escape-top-hud-background { position: absolute !important; inset: 0; width: 100%; height: 100%; object-fit: fill; }
 .escape-alert { position: absolute; top: 9%; left: 2.25%; display: flex; align-items: center; gap: .55%; width: 28%; height: 80%; }
@@ -179,7 +182,7 @@ button { font: inherit; }
 .escape-meter { position: relative; width: 54%; aspect-ratio: 240 / 52; }
 .escape-meter > img:first-child { width: 100%; height: 100%; }
 .escape-meter-fill { position: absolute !important; inset: 21% 5%; width: 90%; height: 58%; object-fit: fill; }
-.escape-route-hud { position: absolute; top: 7%; left: 31%; display: flex; align-items: center; width: 45%; height: 80%; }
+.escape-route-hud { position: absolute; top: 7%; left: 52%; display: flex; align-items: center; width: 23%; height: 80%; }
 .escape-route-player, .escape-route-van { z-index: 2; top: 50%; height: 88%; object-fit: contain; transform: translate(-50%, -50%); }
 .escape-route-player { left: 0; width: 13%; filter: drop-shadow(0 0 6px #ff725f); }
 .escape-route-van { left: 100%; width: 18%; filter: drop-shadow(0 0 5px #071420); }
@@ -188,15 +191,15 @@ button { font: inherit; }
 .escape-route-line i { position: absolute; top: 50%; width: 10px; height: 10px; border: 2px solid #71818a; border-radius: 50%; background: #263d49; transform: translate(-50%, -50%); }
 .escape-route-line i.reached { border-color: #a7754b; background: #f8d69a; box-shadow: 0 0 6px #ffcb7377; }
 .escape-loot-hud { position: absolute; top: 10%; right: 2.5%; display: flex; align-items: center; justify-content: flex-end; gap: .75em; height: 76%; pointer-events: auto; }
-.escape-loot-hud > img { width: clamp(31px, 3.5cqw, 60px); height: 100%; object-fit: contain; }
+.escape-loot-hud > img { position: static; width: clamp(14px, 3.5cqw, 60px); height: 100%; object-fit: contain; }
 .escape-loot-hud span { display: grid; gap: .08em; min-width: 3.3em; color: #f7dba6; text-align: center; text-shadow: 2px 2px #213844; }
 .escape-loot-hud b { font-size: clamp(9px, 1.35cqw, 23px); }.escape-loot-hud small { color: #9fc3cb; font: 700 clamp(6px, .65cqw, 11px) ui-monospace, monospace; }
 .escape-loot-hud button { border: 1px solid #789aa1; padding: .45em .65em; background: #102b37e8; color: #d6f0ed; font: 700 clamp(6px, .58cqw, 10px) ui-monospace, monospace; cursor: pointer; }.escape-loot-hud button:hover { border-color: #f4c45e; background: #1c3f4b; }
-.escape-rps-controls { position: absolute; z-index: 26; top: 15%; left: 2.25%; display: flex; flex-wrap: wrap; align-items: center; gap: .6em; max-width: 46%; font: 700 clamp(10px, 1.05cqw, 16px) 'Noto Sans SC', ui-monospace, monospace; }
-.escape-rps-controls button, .escape-rps-controls > span { border: 2px solid #b89456; padding: .4em .75em; background: #102b37f7; color: #f7dba6; font: inherit; }
-.escape-rps-controls button { cursor: pointer; }
-.escape-rps-controls button:hover:not(:disabled), .escape-rps-controls button[aria-pressed="true"] { border-color: #f7dba6; background: #254759; }
-.escape-rps-controls button:disabled { cursor: default; opacity: .78; }
-.escape-rps-controls > span { flex-basis: 100%; }
+@container (max-width: 570px) {
+  .escape-route-line i { width: 6px; height: 6px; border-width: 1px; }
+  .escape-loot-hud { gap: .25em; }
+  .escape-loot-hud span { min-width: 2em; }
+  .escape-loot-hud button { max-width: 7em; padding: .3em; }
+}
 
 .escape-objective { z-index: 21; bottom: 2.5%; width: 100%; color: #d3e6e2; font-size: clamp(6px, .64cqw, 11px); }.escape-objective b { color: #ffd26e; }
