@@ -4,6 +4,9 @@
 * { box-sizing: border-box; }
 body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; background: #08171e; }
 .pipe-room-frame { display: block; width: 100%; height: 100dvh; border: 0; }
+.game-language { display: flex; position: fixed; z-index: 100; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); background: #081927; border: 1px solid #a38c67; border-radius: 4px; }
+.game-language button { min-width: 40px; min-height: 28px; padding: 3px 6px; border: 0; background: transparent; color: #ead6ad; cursor: pointer; font-size: 12px; }
+.game-language button[aria-pressed='true'] { background: #e8c683; color: #122634; font-weight: 800; }
 .game-shell { display: grid; width: 100vw; min-height: 100vh; place-items: center; background: #08171e; }
 .stage-shell { position: relative; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #0b202a; }
 .game-host { position: absolute; inset: 0; overflow: hidden; }

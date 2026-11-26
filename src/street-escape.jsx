@@ -1,3 +1,4 @@
+import { useFrameLanguage, useGameText } from './use-game-language.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createStreetRoute, fallsIntoStreetGap, MODULE_TYPES, ROAD_GAP_ART_WIDTH, ROAD_GAP_LEFT_LIP, ROAD_GAP_RIGHT_LIP, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
 import { advanceStreetJump, allowsStreetJump, isStreetCrouching, jumpOnSpacePress, pressStreetCrouch } from './street-jump.js';
@@ -30,10 +31,10 @@ function createHeldInputs() {
 }
 
 const moduleLabel = {
-  [MODULE_TYPES.SHORT_JUMP]: 'Space 起跳 · 越过路障',
-  [MODULE_TYPES.LONG_JUMP]: '连按 Space · 大跳越过断路',
-  [MODULE_TYPES.SHORT_CROUCH]: 'Control 下蹲 · 穿过低檐',
-  [MODULE_TYPES.LONG_CROUCH]: 'Control 下蹲 · 通过脚手架',
+  [MODULE_TYPES.SHORT_JUMP]: ['Space 起跳 · 越过路障', 'Space · Jump the barricade'],
+  [MODULE_TYPES.LONG_JUMP]: ['连按 Space · 大跳越过断路', 'Tap Space twice · Jump the gap'],
+  [MODULE_TYPES.SHORT_CROUCH]: ['Control 下蹲 · 穿过低檐', 'Ctrl · Duck under the awning'],
+  [MODULE_TYPES.LONG_CROUCH]: ['Control 下蹲 · 通过脚手架', 'Ctrl · Duck under the scaffolding'],
 };
 
 // Measure the PNG padding below each solid base separately from its collision.
@@ -117,10 +118,12 @@ function createEscapeRuntime(initialAlertLevel) {
 }
 
 export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
+  const t = useGameText();
   const routeRef = useRef(createStreetRoute(freshSeed()));
   const runtimeRef = useRef(createEscapeRuntime(alertLevel));
   const heldRef = useRef(createHeldInputs());
   const challengeRef = useRef(null);
+  const syncChallengeLanguage = useFrameLanguage(challengeRef);
   const stageRef = useRef(null);
   const ownedCameraRef = useRef(null);
   const openingCameraRef = useRef(false);
@@ -162,7 +165,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
       setInputMode('camera');
     } catch {
       if (openingCameraRef.current) {
-        setCameraError('摄像头无法开启。可检查权限后重试，或使用无摄像头演示。');
+        setCameraError(['摄像头无法开启。请检查权限，或使用无摄像头演示。', 'Camera unavailable. Check permissions or use the camera-free demo.']);
         setInputMode('demo');
       }
     } finally {
@@ -345,9 +348,10 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
       ref={challengeRef}
       className="escape-guard-challenge"
       src="./rock-paper-scissors-demo/index.html"
-      title="保安追击 · 三回合石头剪刀布"
+      title={t('保安追击 · 三回合石头剪刀布', 'Guard chase · Three rounds of rock, paper, scissors')}
       onLoad={(event) => {
         const frame = event.currentTarget;
+        syncChallengeLanguage();
         frame.focus();
         frame.contentWindow.dispatchEvent(new CustomEvent('street-rps-start', {
           detail: { stream: inputMode === 'camera' ? liveCamera : null },
@@ -363,7 +367,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
         backgroundSize: `${(ROAD_TILE_WIDTH / VIEW_WIDTH) * 100}% 100%`,
         backgroundPositionX: `${roadOffset}%`,
       }} aria-hidden="true" />
-      <img className="escape-start" style={{ ...START_ART_STYLE, left: `${((42 - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/start-museum-service-exit.png" alt="博物馆后勤出口" />
+      <img className="escape-start" style={{ ...START_ART_STYLE, left: `${((42 - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/start-museum-service-exit.png" alt={t('博物馆后勤出口', 'Museum service exit')} />
 
       {route.modules.map((module) => {
         const collision = module.collision;
@@ -374,7 +378,7 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
         const left = ((visualLeft - view.camera) / VIEW_WIDTH) * 100;
         return <img key={module.id} className="escape-obstacle" style={{ ...groundedArtStyle(art), left: `${left}%` }} src={art.src} alt="" />;
       })}
-      <img className="escape-van" style={{ ...VAN_ART_STYLE, left: `${((route.van.x - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/end-getaway-van.png" alt="接应面包车" />
+      <img className="escape-van" style={{ ...VAN_ART_STYLE, left: `${((route.van.x - view.camera) / VIEW_WIDTH) * 100}%` }} src="/street-escape/end-getaway-van.png" alt={t('接应面包车', 'Getaway van')} />
 
       <div
         className={`escape-player facing-${view.facing} ${view.crouching ? 'crouching' : ''} ${view.y < 0 ? 'jumping' : ''} ${recovering ? 'recovering' : ''}`}
@@ -383,64 +387,64 @@ export function StreetEscape({ onExit, cameraStream, alertLevel = 0 }) {
           bottom: `${playerBottom}%`,
         }}
       >
-        <img src={playerArt} alt="正在逃离的小偷" />
+        <img src={playerArt} alt={t('正在逃离的小偷', 'Thief on the run')} />
       </div>
-      {view.guardX !== null && <img className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }} src="/assets/guard/right.png" alt="正在追赶的保安" />}
+      {view.guardX !== null && <img className="escape-guard" style={{ left: `${((view.guardX - view.camera) / VIEW_WIDTH) * 100}%` }} src="/assets/guard/right.png" alt={t('正在追赶的保安', 'Guard in pursuit')} />}
 
-      <header className="escape-top-hud" aria-label="逃脱状态栏">
+      <header className="escape-top-hud" aria-label={t('逃脱状态栏', 'Escape HUD')}>
         <img className="escape-top-hud-background" src="/stealth-ui/top_hud_background.png" alt="" />
         <div className="escape-alert">
           <img className="escape-siren" src="/stealth-ui/alarm_siren.png" alt="" />
-          <div className="escape-meter" role="meter" aria-label="警戒" aria-valuemin={0} aria-valuemax={STREET_MAX_ALERT} aria-valuenow={view.alertLevel}>
+          <div className="escape-meter" role="meter" aria-label={t('警戒', 'Alert')} aria-valuemin={0} aria-valuemax={STREET_MAX_ALERT} aria-valuenow={view.alertLevel}>
             <img src="/stealth-ui/alarm_meter_frame.png" alt="" />
             <img className="escape-meter-fill" style={{ clipPath: `inset(0 ${STREET_MAX_ALERT - view.alertLevel}% 0 0)` }} src="/stealth-ui/alarm_meter_fill_segments.png" alt="" />
           </div>
         </div>
         <div className="escape-route-hud">
-          <img className="escape-route-player" src="/stealth-ui/player_marker.png" alt="小偷" />
-          <div className="escape-route-line" role="progressbar" aria-label="逃离进度" aria-valuenow={Math.round(progress)}>
+          <img className="escape-route-player" src="/stealth-ui/player_marker.png" alt={t('小偷', 'Thief')} />
+          <div className="escape-route-line" role="progressbar" aria-label={t('逃离进度', 'Escape progress')} aria-valuenow={Math.round(progress)}>
             <span className="escape-route-fill" style={{ width: `${progress}%` }} />
             {ROUTE_CHECKPOINTS.map((checkpoint) => (
               <i key={checkpoint} className={progress >= checkpoint ? 'reached' : undefined} style={{ left: `${checkpoint}%` }} />
             ))}
           </div>
-          <img className="escape-route-van" src="/street-escape/end-getaway-van.png" alt="接应车" />
+          <img className="escape-route-van" src="/street-escape/end-getaway-van.png" alt={t('接应车', 'Getaway van')} />
         </div>
         <div className="escape-loot-hud">
-          <img src="/stealth-ui/treasure_chest.png" alt="已取得的宝藏" />
+          <img src="/stealth-ui/treasure_chest.png" alt={t('已取得的宝藏', 'Stolen treasure')} />
           <span><b>{Math.round(progress)}%</b><small>{formatClock(view.elapsed)}</small></span>
-          <button type="button" onClick={onExit}>返回展厅</button>
+          <button type="button" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>
         </div>
       </header>
-      <div className="escape-rps-controls" aria-label="猜拳输入方式">
+      <div className="escape-rps-controls" aria-label={t('猜拳输入方式', 'Rock, paper, scissors input mode')}>
         <button type="button" onClick={enableChallengeCamera} disabled={cameraLoading || (inputMode === 'camera' && Boolean(liveCamera))}>
-          {cameraLoading ? '正在开启摄像头…' : inputMode === 'camera' && liveCamera ? '摄像头已开启' : '开启摄像头'}
+          {cameraLoading ? t('正在开启摄像头…', 'Starting camera…') : inputMode === 'camera' && liveCamera ? t('摄像头已开启', 'Camera on') : t('开启摄像头', 'Enable camera')}
         </button>
-        <button type="button" onClick={selectChallengeDemo} disabled={cameraLoading} aria-pressed={inputMode === 'demo' || !liveCamera}>无摄像头演示</button>
-        {cameraError && <span role="status">{cameraError}</span>}
+        <button type="button" onClick={selectChallengeDemo} disabled={cameraLoading} aria-pressed={inputMode === 'demo' || !liveCamera}>{t('无摄像头演示', 'Camera-free demo')}</button>
+        {cameraError && <span role="status">{t(...cameraError)}</span>}
       </div>
       <p className="escape-objective">
-        <b>A / D</b> 移动　·　<b>Space</b> 起跳 / 连按大跳　·　<b>Ctrl</b> 下蹲　·　
-        {recovering ? <b role="status">撞上障碍 · 警戒 +30% · 恢复中</b> : <>
-          {view.guardStunned && <b role="status">{view.lastChallengeOutcome === 'lose' ? '警戒上升，快跑！' : '保安已被制住，快跑！'}　·　</b>}
-          {view.bigJump && <b>大跳已触发　·　</b>}
-          {activeInstruction ? moduleLabel[activeInstruction.type] : '接应车就在前方'}
+        <b>A / D</b> {t('移动', 'Move')} · <b>Space</b> {t('起跳 / 连按大跳', 'Jump / double-tap for a high jump')} · <b>Ctrl</b> {t('下蹲', 'Duck')} ·{' '}
+        {recovering ? <b role="status">{t('撞上障碍 · 警戒 +30% · 恢复中', 'Obstacle hit · Alert +30% · Recovering')}</b> : <>
+          {view.guardStunned && <b role="status">{view.lastChallengeOutcome === 'lose' ? t('警戒上升，快跑！', 'Alert increased. Run!') : t('保安已被制住，快跑！', 'Guard stunned. Run!')}　·　</b>}
+          {view.bigJump && <b>{t('大跳已触发　·　', 'High jump　·　')}</b>}
+          {activeInstruction ? t(...moduleLabel[activeInstruction.type]) : t('接应车就在前方', 'Getaway van ahead')}
         </>}
       </p>
 
       {(view.phase === 'fell' || view.phase === 'arrested') && <section className="escape-result failure" role="alert">
-        <span>逃脱中断</span><strong>{view.phase === 'fell' ? '掉进断路了' : '小偷被逮捕'}</strong><p>这条夜路会重新生成。</p><button type="button" onClick={restart}>重新逃脱</button>
+        <span>{t('逃脱中断', 'Escape interrupted')}</span><strong>{view.phase === 'fell' ? t('掉进断路了', 'You fell into the gap') : t('小偷被逮捕', 'You were caught')}</strong><p>{t('这条夜路会重新生成。', 'A new route will be generated.')}</p><button type="button" onClick={restart}>{t('重新逃脱', 'Try again')}</button>
       </section>}
       {view.phase === 'complete' && <section className="escape-result success" role="alert">
-        <span>MISSION COMPLETE</span><strong>成功逃离博物馆</strong><p>宝藏已安全装上接应车。</p><button type="button" onClick={restart}>挑战新的逃脱路线</button><button type="button" className="quiet" onClick={onExit}>返回展厅</button>
+        <span>{t('任务完成', 'MISSION COMPLETE')}</span><strong>{t('成功逃离博物馆', 'You escaped the museum')}</strong><p>{t('宝藏已安全装上接应车。', 'The treasure is safely in the getaway van.')}</p><button type="button" onClick={restart}>{t('挑战新的逃脱路线', 'Try a new route')}</button><button type="button" className="quiet" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>
       </section>}
     </>
   );
 
   return <main className="escape-app">
-    <section ref={stageRef} className="escape-stage" tabIndex={-1} aria-label="Museum Heist 第三关：街头逃脱">
+    <section ref={stageRef} className="escape-stage" tabIndex={-1} aria-label={t('Museum Heist 第三关：街头逃脱', 'Museum Heist Stage 3: Street Escape')}>
       {scene}
     </section>
-    <p className="escape-note" style={{ visibility: inChallenge ? 'hidden' : undefined }}>每次进入都会生成新的单向逃脱路线 · 像素素材使用原始硬边缩放</p>
+    <p className="escape-note" style={{ visibility: inChallenge ? 'hidden' : undefined }}>{t('每次进入都会生成新的单向逃脱路线 · 像素素材使用原始硬边缩放', 'A new escape route is generated each run · Crisp pixel art')}</p>
   </main>;
 }

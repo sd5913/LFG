@@ -6,10 +6,14 @@ import { GAME } from './game/config.js';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import { TreasureUnlock } from './treasure-unlock.jsx';
 import { StreetEscape } from './street-escape.jsx';
+import { LANGUAGE_STORAGE_KEY, normalizeLanguage } from './game-locale.js';
+import { GameLanguage, useFrameLanguage, useGameText } from './use-game-language.js';
 import './styles.css';
 
 function PipeRoom({ onComplete }) {
   const frameRef = useRef(null);
+  const syncLanguage = useFrameLanguage(frameRef);
+  const t = useGameText();
 
   useEffect(() => {
     const finishPipeRoom = (event) => {
@@ -24,12 +28,14 @@ function PipeRoom({ onComplete }) {
     ref={frameRef}
     className="pipe-room-frame"
     src="./Pipe_Room_demo_v1/index.html"
-    title="Museum Heist 第一关：通风管道潜入"
+    title={t('Museum Heist 第一关：通风管道潜入', 'Museum Heist Stage 1: Ventilation Tunnels')}
     allow="camera"
+    onLoad={syncLanguage}
   />;
 }
 
 function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatus, cameraError, onToggleCamera }) {
+  const t = useGameText();
   const host = useRef(null);
   const gameRef = useRef(null);
   const [state, setState] = useState({ ready: false, error: '', moving: false, facing: 'right', debug: false });
@@ -57,6 +63,11 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
     };
   }, []);
 
+  const canvasLabel = t('博物馆展厅。用 WASD 或方向键移动，F2 显示碰撞框，R 回到起点。', 'Museum gallery. Use WASD or arrows to move, F2 for collision bounds, and R to return to the entrance.');
+  useEffect(() => {
+    host.current?.querySelector('canvas')?.setAttribute('aria-label', canvasLabel);
+  }, [canvasLabel, state.ready]);
+
   useEffect(() => {
     const openInteraction = event => {
       if (event.code !== 'Space' || event.repeat) return;
@@ -75,46 +86,47 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState, cameraStatu
   }, [cameraStatus, onPoseDemo, onTreasureUnlock, state.hiddenExhibitId, state.nearTreasure, state.treasureUnlocked]);
 
   return <main className="game-shell">
-    <section className="stage-shell" aria-label="Museum Heist 游戏区域">
+    <section className="stage-shell" aria-label={t('Museum Heist 游戏区域', 'Museum Heist game area')}>
       <div ref={host} className="game-host" />
       <div className="room-hud gameplay-hud">
         <img className="gameplay-hud-background" src="/stealth-ui/top_hud_background.png" alt="" />
-        <div className="gameplay-alert" aria-label={`警戒 ${Math.round(state.alertLevel ?? 0)}%`}>
+        <div className="gameplay-alert" aria-label={`${t('警戒', 'Alert')} ${Math.round(state.alertLevel ?? 0)}%`}>
           <img className="gameplay-siren" src="/stealth-ui/alarm_siren.png" alt="" />
-          <span className="gameplay-alert-copy">警戒<strong>{Math.round(state.alertLevel ?? 0)}%</strong></span>
+          <span className="gameplay-alert-copy">{t('警戒', 'Alert')}<strong>{Math.round(state.alertLevel ?? 0)}%</strong></span>
           <div className="gameplay-meter">
             <img src="/stealth-ui/alarm_meter_frame.png" alt="" />
             <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - (state.alertLevel ?? 0)}% 0 0)` }} src="/stealth-ui/alarm_meter_fill_segments.png" alt="" />
           </div>
         </div>
-        <div className="gameplay-route" aria-label="潜入路线：当前位于第三展厅">
+        <div className="gameplay-route" aria-label={t('潜入路线：当前位于第三展厅', 'Infiltration route: third gallery')}>
           {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === 3 ? 'current' : ''}`} key={room}>
-            <img src="/stealth-ui/room_house.png" alt={`第 ${room} 个房间`} />
-            {room === 3 && <img className="gameplay-player-marker" src="/stealth-ui/player_marker.png" alt="小偷当前位置" />}
+            <img src="/stealth-ui/room_house.png" alt={t(`第 ${room} 个房间`, `Room ${room}`)} />
+            {room === 3 && <img className="gameplay-player-marker" src="/stealth-ui/player_marker.png" alt={t('小偷当前位置', 'Thief’s location')} />}
           </div>)}
-          <img className="gameplay-treasure" src="/stealth-ui/treasure_chest.png" alt="最终宝箱" />
+          <img className="gameplay-treasure" src="/stealth-ui/treasure_chest.png" alt={t('最终宝箱', 'Treasure chest')} />
         </div>
         <button className={`hud-camera ${cameraStatus}`} type="button" onClick={onToggleCamera} disabled={cameraStatus === 'requesting'}>
-          {cameraStatus === 'ready' ? '关闭扫描摄像头' : cameraStatus === 'requesting' ? '正在开启…' : cameraStatus === 'error' ? '重试扫描摄像头' : '开启扫描摄像头'}
+          {cameraStatus === 'ready' ? t('关闭扫描摄像头', 'Turn off camera') : cameraStatus === 'requesting' ? t('正在开启…', 'Starting…') : cameraStatus === 'error' ? t('重试扫描摄像头', 'Retry camera') : t('开启扫描摄像头', 'Enable camera')}
         </button>
-        {cameraError && <span className="hud-camera-error">{cameraError}</span>}
+        {cameraError && <span className="hud-camera-error">{t(...cameraError)}</span>}
       </div>
       {state.gameOver && <section className="game-over-panel" role="alert">
-        <span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button>
+        <span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={() => window.location.reload()}>{t('重新开始', 'Restart')}</button>
       </section>}
-      {state.nearTreasure && !state.treasureUnlocked && <p className="room-pose-hint">宝箱就在前方 · 按空格键开始手势解锁</p>}
-      {!state.nearTreasure && state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? '安全遮蔽中 · 按空格键开始姿势扫描' : '安全遮蔽中 · 请先点击上方“开启扫描摄像头”'}</p>}
-      {state.treasureUnlocked && <p className="room-treasure-hint">宝箱已解锁 · 继续前进</p>}
+      {state.nearTreasure && !state.treasureUnlocked && <p className="room-pose-hint">{t('宝箱就在前方 · 按空格键开始手势解锁', 'Chest ahead · Press Space to unlock')}</p>}
+      {!state.nearTreasure && state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? t('安全遮蔽中 · 按空格键开始姿势扫描', 'In cover · Press Space to scan your pose') : t('安全遮蔽中 · 请先点击上方“开启扫描摄像头”', 'In cover · Enable the camera to scan your pose')}</p>}
+      {state.treasureUnlocked && <p className="room-treasure-hint">{t('宝箱已解锁 · 继续前进', 'Chest unlocked · Keep moving')}</p>}
       {!state.ready && <div className="loading-panel" role={state.error ? 'alert' : 'status'}>
         <span className="panel-index">ROOM 01</span>
-        <p>{state.error || '正在准备展厅与角色素材…'}</p>
-        {state.error && <button onClick={() => window.location.reload()}>重新加载</button>}
+        <p>{(state.error && t(...state.error)) || t('正在准备展厅与角色素材…', 'Loading the museum gallery…')}</p>
+        {state.error && <button onClick={() => window.location.reload()}>{t('重新加载', 'Reload')}</button>}
       </div>}
     </section>
   </main>;
 }
 
 function App() {
+  const t = useGameText();
   const [stage, setStage] = useState(() => {
     const requested = new URLSearchParams(window.location.search).get('stage');
     return requested === 'museum' || requested === 'escape' ? requested : 'pipe';
@@ -128,6 +140,13 @@ function App() {
   const [cameraError, setCameraError] = useState('');
 
   const enterMuseum = useCallback(() => setStage('museum'), []);
+
+  const enterMuseumFromPipe = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('stage', 'museum');
+    window.history.replaceState(window.history.state, '', url);
+    enterMuseum();
+  }, [enterMuseum]);
 
   const enterStreetEscape = useCallback(() => {
     setResumeState((previous) => previous ? { ...previous, treasureUnlocked: true } : previous);
@@ -147,13 +166,16 @@ function App() {
     setCameraStatus('requesting');
     setCameraError('');
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('当前浏览器不支持摄像头访问。');
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is unavailable in this browser.');
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 }, audio: false });
       cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current = stream;
       setCameraStatus('ready');
-    } catch (error) {
-      setCameraError(error?.message || '无法开启摄像头，请检查浏览器权限。');
+    } catch {
+      setCameraError([
+        '无法开启摄像头，请检查浏览器权限。',
+        'Could not start the camera. Check your browser permissions.',
+      ]);
       setCameraStatus('error');
     }
   }, [cameraStatus]);
@@ -172,10 +194,10 @@ function App() {
   }, [activeExhibitId]);
 
   if (gameOver) return <main className="game-shell"><section className="stage-shell game-over-stage">
-    <section className="game-over-panel" role="alert"><span>GAME OVER</span><strong>你被捕了</strong><button onClick={() => window.location.reload()}>重新开始</button></section>
+    <section className="game-over-panel" role="alert"><span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={() => window.location.reload()}>{t('重新开始', 'Restart')}</button></section>
   </section></main>;
 
-  if (stage === 'pipe') return <PipeRoom onComplete={enterMuseum} />;
+  if (stage === 'pipe') return <PipeRoom onComplete={enterMuseumFromPipe} />;
 
   if (stage === 'escape') return <StreetEscape
     cameraStream={cameraStreamRef.current}
@@ -221,4 +243,25 @@ function App() {
   />;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+function MuseumHeist() {
+  const [language, setLanguage] = useState(() => {
+    try { return normalizeLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)); }
+    catch { return 'zh-CN'; }
+  });
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language); }
+    catch { /* Language still applies for this session. */ }
+  }, [language]);
+
+  return <GameLanguage.Provider value={language}>
+    <App />
+    <div className="game-language" role="group" aria-label={language === 'en' ? 'Game language' : '游戏语言'}>
+      <button type="button" lang="zh-CN" aria-pressed={language === 'zh-CN'} onClick={() => setLanguage('zh-CN')}>中文</button>
+      <button type="button" lang="en" aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>EN</button>
+    </div>
+  </GameLanguage.Provider>;
+}
+
+createRoot(document.getElementById('root')).render(<MuseumHeist />);

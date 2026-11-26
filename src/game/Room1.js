@@ -36,7 +36,10 @@ export default class Room1 extends Phaser.Scene {
 
   create() {
     if (this.failedAssets.length) {
-      this.onState({ ready: false, error: `素材加载失败：${this.failedAssets.join('、')}。请刷新或检查 assets 文件夹。` });
+      this.onState({ ready: false, error: [
+        `素材加载失败：${this.failedAssets.join('、')}。请刷新或检查 assets 文件夹。`,
+        `Could not load ${this.failedAssets.join(', ')}. Reload or check the assets folder.`,
+      ] });
       return;
     }
     this.createTextures();
@@ -334,7 +337,6 @@ export default class Room1 extends Phaser.Scene {
   installInput() {
     const canvas = this.game.canvas;
     canvas.tabIndex = 0;
-    canvas.setAttribute('aria-label', '第一间博物馆房间。WASD 或方向键移动，F2 显示碰撞框，R 回到起点。');
     this.focusCanvas = () => canvas.focus({ preventScroll: true });
     this.keyDown = event => {
       if (document.activeElement !== canvas || event.ctrlKey || event.metaKey || event.altKey) return;

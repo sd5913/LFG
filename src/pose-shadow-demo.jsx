@@ -1,3 +1,4 @@
+import { useGameText } from './use-game-language.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const TASKS_VERSION = '0.10.14';
@@ -12,14 +13,14 @@ const ASSET_ROOT = '/stealth-ui';
 // display images, rather than sharing the earlier rotating demo targets.
 const EXHIBIT_POSE_CONFIGS = Object.freeze({
   'case-nw': {
-    title: '鸟首祈祷雕像', instruction: '双手在胸前交握，保持不动',
+    title: ['鸟首祈祷雕像', 'Bird-headed prayer statue'], instruction: ['双手在胸前交握，保持不动', 'Clasp both hands at your chest and hold still'],
     referenceImage: '/assets/exhibits/case-nw-hidden.png',
     // Low, nearly central elbows make both palms meet at the sternum.
     left: { upper: [-0.18, 0.98], forearm: [0.94, -0.34] },
     right: { upper: [0.18, 0.98], forearm: [-0.94, -0.34] },
   },
   'case-sw': {
-    title: '持卷轴雕像', instruction: '双手在胸前捧起卷轴，保持不动',
+    title: ['持卷轴雕像', 'Scroll-bearing statue'], instruction: ['双手在胸前捧起卷轴，保持不动', 'Hold an imaginary scroll at chest height and stay still'],
     referenceImage: '/assets/exhibits/case-sw-hidden.png',
     // Unlike the prayer pose, elbows open out and each hand stays on one side
     // of the imaginary scroll instead of meeting in the centre.
@@ -27,7 +28,7 @@ const EXHIBIT_POSE_CONFIGS = Object.freeze({
     right: { upper: [0.8, 0.6], forearm: [-1, -0.1] },
   },
   'case-ne': {
-    title: '星月抚额雕像', instruction: '左手轻扶额角，右手自然收于腹前',
+    title: ['星月抚额雕像', 'Crescent statue'], instruction: ['左手轻扶额角，右手自然收于腹前', 'Touch your left temple and rest your right hand at your abdomen'],
     referenceImage: '/assets/exhibits/case-ne-hidden.png',
     // The raised hand stops beside the forehead, never above the head.
     left: { upper: [-0.6, -0.42], forearm: [0.54, -0.84] },
@@ -35,7 +36,7 @@ const EXHIBIT_POSE_CONFIGS = Object.freeze({
     required: ['leftElbow', 'leftWrist'],
   },
   'case-se': {
-    title: '宝石抱臂雕像', instruction: '左臂斜搭右肩，右手自然垂于腹前',
+    title: ['宝石抱臂雕像', 'Jeweled statue'], instruction: ['左臂斜搭右肩，右手自然垂于腹前', 'Cross your left arm to your right shoulder and lower your right hand to your abdomen'],
     referenceImage: '/assets/exhibits/case-se-hidden.png',
     // This statue has one arm across the chest and the other relaxed at the waist.
     left: { upper: [0.48, 0.64], forearm: [0.55, -0.78] },
@@ -49,7 +50,14 @@ const EXHIBIT_POSE_CONFIGS = Object.freeze({
 });
 
 const TARGETS = Object.entries(EXHIBIT_POSE_CONFIGS)
-  .map(([id, { title, instruction, referenceImage }]) => ({ id, title, instruction, referenceImage }));
+  .map(([id, { title, referenceImage }]) => ({
+    id, title, referenceImage,
+    matchHint: [`模仿目标姿势：${title[0]}`, `Match the ${title[1].toLowerCase()}`],
+  }));
+
+const POSE_MATCHED = ['姿势正确，继续保持', 'Pose matched. Hold still.'];
+const POSE_JITTER = ['正在容忍短暂识别抖动，请保持姿势', 'Tracking briefly lost. Hold your pose.'];
+const POSE_NOT_FOUND = ['请站到扫描窗口中央', 'Stand in the center of the scan window'];
 
 function landmarkIsVisible(landmarks, index) {
   return landmarks[index] && (landmarks[index].visibility == null || landmarks[index].visibility > 0.45);
@@ -188,6 +196,7 @@ function drawPose(canvas, landmarks, isMatching, target, guide) {
 function asset(name) { return `${ASSET_ROOT}/${name}`; }
 
 export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel = 0 }) {
+  const t = useGameText();
   const target = TARGETS.find(({ id }) => id === exhibitId) ?? TARGETS[0];
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -204,8 +213,8 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
   const [isRunning, setIsRunning] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
-  const [status, setStatus] = useState('准备开始扫描');
-  const [error, setError] = useState('');
+  const [status, setStatus] = useState(['准备开始扫描', 'Ready to scan']);
+  const [error, setError] = useState(false);
   const [scanSeconds, setScanSeconds] = useState(20);
 
   const detectFrame = useCallback(() => {
@@ -228,7 +237,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
       setScanSeconds((current) => current === nextSecond ? current : nextSecond);
       if (elapsed >= SCAN_DURATION_MS) {
         cancelAnimationFrame(animationFrameRef.current);
-        setStatus('扫描超时，你被捕了。');
+        setStatus(['扫描超时，你被捕了。', 'Time ran out. You were caught.']);
         onCompleteRef.current?.({ exhibitId, success: false, reason: 'timeout' });
         return;
       }
@@ -237,22 +246,22 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
         holdStartedAtRef.current ??= now;
         const progress = Math.min(100, ((now - holdStartedAtRef.current) / HOLD_DURATION_MS) * 100);
         if (Math.abs(lastProgressRef.current - progress) > 0.8) { lastProgressRef.current = progress; setHoldProgress(progress); }
-        setStatus('姿势正确，继续保持');
+        setStatus(POSE_MATCHED);
         if (progress >= 100) {
           cancelAnimationFrame(animationFrameRef.current);
-          setStatus('伪装成功！正在返回展厅…');
+          setStatus(['伪装成功！正在返回展厅…', 'Disguise successful. Returning to the gallery…']);
           onCompleteRef.current?.({ exhibitId, success: true });
           return;
         }
       } else {
         const withinGrace = holdStartedAtRef.current && now - lastMatchedAtRef.current < JITTER_GRACE_MS;
         if (withinGrace) {
-          setStatus('正在容忍短暂识别抖动，请保持姿势');
+          setStatus(POSE_JITTER);
         } else {
           holdStartedAtRef.current = null;
           if (lastProgressRef.current) setHoldProgress(0);
           lastProgressRef.current = 0;
-          setStatus(landmarks ? `模仿目标姿势：${target.title}` : '请站到扫描窗口中央');
+          setStatus(landmarks ? target.matchHint : POSE_NOT_FOUND);
         }
       }
     }
@@ -260,9 +269,9 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
   }, []);
 
   const startScanner = useCallback(async () => {
-    setError(''); setStatus('正在连接扫描器…');
+    setError(false); setStatus(['正在连接扫描器…', 'Connecting to the scanner…']);
     try {
-      if (!cameraStream?.active) throw new Error('摄像头尚未开启，请返回主地图上方栏开启扫描摄像头。');
+      if (!cameraStream?.active) throw new Error('The gallery camera is off.');
       const { FilesetResolver, PoseLandmarker } = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`);
       const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
       if (!landmarkerRef.current) {
@@ -274,11 +283,11 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
       await videoRef.current.play();
       actionStartedAtRef.current = performance.now();
       setScanSeconds(20);
-      setIsRunning(true); setStatus(`扫描灯靠近 · 模仿${targetRef.current.title}`);
+      setIsRunning(true); setStatus(['扫描灯靠近 · 模仿目标姿势', 'Scan light approaching · Match the target pose']);
       animationFrameRef.current = requestAnimationFrame(detectFrame);
-    } catch (caughtError) {
+    } catch {
       streamRef.current = null;
-      setError(caughtError.message || '无法启动摄像头。'); setStatus('扫描器连接失败');
+      setError(true); setStatus(['扫描器连接失败', 'Could not connect to the scanner']);
     }
   }, [cameraStream, detectFrame]);
 
@@ -299,57 +308,57 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
 
   return (
     <main className="stealth-shell">
-      <section className="stealth-game" aria-label="博物馆姿势扫描挑战">
+      <section className="stealth-game" aria-label={t('博物馆姿势扫描挑战', 'Museum pose scan challenge')}>
         <img className="museum-backplate" src={asset('museum_scene_backplate.png')} alt="" />
         <div className="scene-dim" />
 
         <header className="top-hud gameplay-hud pose-gameplay-hud">
           <img className="gameplay-hud-background" src={asset('top_hud_background.png')} alt="" />
-          <div className="gameplay-alert" aria-label={`暂停中的警戒 ${Math.round(alertLevel)}%`}>
+          <div className="gameplay-alert" aria-label={`${t('暂停中的警戒', 'Alert paused at')} ${Math.round(alertLevel)}%`}>
             <img className="gameplay-siren" src={asset('alarm_siren.png')} alt="" />
-            <span className="gameplay-alert-copy">警戒<strong>{Math.round(alertLevel)}%</strong></span>
+            <span className="gameplay-alert-copy">{t('警戒', 'Alert')}<strong>{Math.round(alertLevel)}%</strong></span>
             <div className="gameplay-meter">
               <img src={asset('alarm_meter_frame.png')} alt="" />
               <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - alertLevel}% 0 0)` }} src={asset('alarm_meter_fill_segments.png')} alt="" />
             </div>
           </div>
-          <div className="gameplay-route" aria-label="潜入路线：当前位于第三展厅">
+          <div className="gameplay-route" aria-label={t('潜入路线：当前位于第三展厅', 'Infiltration route: third gallery')}>
             {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === 3 ? 'current' : ''}`} key={room}>
-              <img src={asset('room_house.png')} alt={`第 ${room} 个房间`} />
-              {room === 3 && <img className="gameplay-player-marker" src={asset('player_marker.png')} alt="小偷当前位置" />}
+              <img src={asset('room_house.png')} alt={t(`第 ${room} 个房间`, `Room ${room}`)} />
+              {room === 3 && <img className="gameplay-player-marker" src={asset('player_marker.png')} alt={t('小偷当前位置', 'Thief’s location')} />}
             </div>)}
-            <img className="gameplay-treasure" src={asset('treasure_chest.png')} alt="最终宝箱" />
+            <img className="gameplay-treasure" src={asset('treasure_chest.png')} alt={t('最终宝箱', 'Treasure chest')} />
           </div>
         </header>
 
         <section className="challenge-layer">
           <div className="warning-banner">
             <img src={asset('warning_banner_blank.png')} alt="" />
-            <div className="warning-copy"><strong>扫描灯靠近 · 伪装成雕像</strong><span aria-label={`剩余 ${scanSeconds} 秒`}>{String(scanSeconds).padStart(2, '0')} 秒</span></div>
+            <div className="warning-copy"><strong>{t('扫描灯靠近 · 伪装成雕像', 'Scan light approaching · Pose as the statue')}</strong><span aria-label={t(`剩余 ${scanSeconds} 秒`, `${scanSeconds} seconds remaining`)}>{String(scanSeconds).padStart(2, '0')} {t('秒', 's')}</span></div>
           </div>
 
           <section className="pose-screen">
             <img src={asset('pose_screen_panel.png')} alt="" />
-            <p className="target-step">目标动作 01 / 01 · {target.title}</p>
+            <p className="target-step">{t('目标动作', 'Target pose')} 01 / 01 · {t(...target.title)}</p>
             <img className="pose-reference-backdrop" src={target.referenceImage} alt="" />
-            <canvas ref={canvasRef} width="1124" height="596" aria-label="目标姿势虚影与实时关节点识别" />
-            <div className="pose-progress" aria-label={`姿势匹配进度 ${Math.round(holdProgress)}%`}>
-              <span>姿势匹配进度</span>
+            <canvas ref={canvasRef} width="1124" height="596" aria-label={t('目标姿势虚影与实时关节点识别', 'Target silhouette and live body tracking')} />
+            <div className="pose-progress" aria-label={`${t('姿势匹配进度', 'Pose match')} ${Math.round(holdProgress)}%`}>
+              <span>{t('姿势匹配进度', 'Pose match')}</span>
               <div className="pose-meter"><img src={asset('pose_progress_frame.png')} alt="" /><img className="meter-fill" style={{ clipPath: `inset(0 ${100 - holdProgress}% 0 0)` }} src={asset('pose_progress_fill_segments.png')} alt="" /></div>
               <strong>{Math.round(holdProgress)}%</strong>
             </div>
-            {!isRunning && <p className="scan-hint">{error ? '请返回主地图上方栏开启摄像头' : '正在接入已开启的扫描摄像头…'}</p>}
+            {!isRunning && <p className="scan-hint">{error ? t('请返回主地图上方栏开启摄像头', 'Enable the camera from the gallery') : t('正在接入已开启的扫描摄像头…', 'Connecting to the camera…')}</p>}
           </section>
 
           <footer className="result-banner">
             <img src={asset('result_banner_blank.png')} alt="" />
-            <div className="result-copy"><span>成功：获得安全窗口</span><b className="scan-auto-label">{isRunning ? '扫描中' : '等待摄像头'}</b><em>失败：警戒上升</em></div>
+            <div className="result-copy"><span>{t('成功：获得安全窗口', 'Success: Brief cover')}</span><b className="scan-auto-label">{isRunning ? t('扫描中', 'Scanning') : t('等待摄像头', 'Waiting for camera')}</b><em>{t('失败：警戒上升', 'Failure: Alert increases')}</em></div>
           </footer>
-          {error && <p className="error-message">{error}</p>}
+          {error && <p className="error-message">{t('无法连接摄像头，请返回展厅检查权限。', 'Could not connect to the camera. Check permissions in the gallery.')}</p>}
         </section>
         <video ref={videoRef} muted playsInline />
       </section>
-      <p className="privacy-note" aria-live="polite">{status} · 摄像头与关键点仅在本机浏览器内处理。</p>
+      <p className="privacy-note" aria-live="polite">{t(...status)} · {t('摄像头与关键点仅在本机浏览器内处理。', 'Camera frames and landmarks are processed locally.')}</p>
     </main>
   );
 }

@@ -1,8 +1,8 @@
 export const STEPS = Object.freeze([
-  { id: 'POINT', title: '伸出食指', detail: '其余手指握起并保持 2 秒', holdMs: 2000 },
-  { id: 'PINCH', title: '拇指食指捏合', detail: '让两指靠近，保持稳定 2 秒', holdMs: 2000 },
-  { id: 'FIST', title: '握紧拳头', detail: '五指收拢，保持握拳 2 秒', holdMs: 2000 },
-  { id: 'ROTATE', title: '握拳旋转', detail: '保持握拳，缓慢转动手腕', holdMs: 0 },
+  { id: 'POINT', title: ['伸出食指', 'Raise your index finger'], detail: ['其余手指握起并保持 2 秒', 'Curl the other fingers and hold for 2 seconds'], holdMs: 2000 },
+  { id: 'PINCH', title: ['拇指食指捏合', 'Pinch thumb and index finger'], detail: ['让两指靠近，保持稳定 2 秒', 'Bring the fingertips together and hold for 2 seconds'], holdMs: 2000 },
+  { id: 'FIST', title: ['握紧拳头', 'Make a fist'], detail: ['五指收拢，保持握拳 2 秒', 'Curl all five fingers and hold for 2 seconds'], holdMs: 2000 },
+  { id: 'ROTATE', title: ['握拳旋转', 'Rotate your fist'], detail: ['保持握拳，缓慢转动手腕', 'Keep your fist closed and slowly rotate your wrist'], holdMs: 0 },
 ]);
 
 const ROTATION_TARGET = 50 * Math.PI / 180;

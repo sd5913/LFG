@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SEGMENTS,HAZARDS,VALVES,TOTAL_LENGTH,routeAt,movementForKey,clampAtLockedValve,hazardAt,jumpHeight,steamState,safeFromSteam,crawlRate,CRAWL_STROKE_SECONDS} from '../src/route.js';
+import {SEGMENTS,HAZARDS,VALVES,TOTAL_LENGTH,routeAt,movementForKey,clampAtLockedValve,hazardAt,jumpHeight,steamState,safeFromSteam,crawlRate,CRAWL_STROKE_SECONDS,reachedPipeExit} from '../src/route.js';
 import {ValveGestureSequence,fistScore,palmRotation} from '../src/gesture-valve.js';
 test('pipe pieces form six and only six constrained path segments',()=>assert.equal(SEGMENTS.length,6));
 test('path starts at left lower inlet',()=>assert.deepEqual([routeAt(0).x,routeAt(0).y],[121,826]));
@@ -16,8 +16,24 @@ test('player can reverse at junction back onto previous segment',()=>assert.equa
 test('player cannot walk upward through bottom horizontal tube',()=>assert.equal(movementForKey(200,'up').delta,0));
 test('hazard only inside steam collision zone',()=>{const h=HAZARDS[0];assert.equal(hazardAt(h.center)?.id,h.id);assert.equal(hazardAt(h.center-110),null);});
 test('jump is an arc lasting 1.2 seconds',()=>{assert.equal(jumpHeight(-1),0);assert.ok(jumpHeight(.6)>69);assert.equal(jumpHeight(1.16),0);});
-test('steam alternates between ON and OFF, including a countdown',()=>{const h=HAZARDS[0];assert.equal(steamState(h,0).active,true);assert.equal(steamState(h,4.1).active,true);assert.equal(steamState(h,4.25).active,false);assert.ok(steamState(h,4.25).remaining>1);assert.equal(steamState(h,6).active,true);});
-test('ON steam blocks airborne player, OFF steam still requires jump',()=>{const h=HAZARDS[0];assert.equal(safeFromSteam(h.center,.6,0),false);assert.equal(safeFromSteam(h.center,-1,4.3),false);assert.equal(safeFromSteam(h.center,.6,4.3),true);});
+test('each vent sprays for three seconds and pauses for three seconds',()=>{
+ for(const hazard of HAZARDS){
+  const cycleStart=-hazard.phase;
+  assert.equal(steamState(hazard,cycleStart+2.99).active,true);
+  assert.equal(steamState(hazard,cycleStart+3).active,false);
+  assert.equal(steamState(hazard,cycleStart+3).remaining,3);
+  assert.equal(steamState(hazard,cycleStart+5.99).active,false);
+  assert.equal(steamState(hazard,cycleStart+6).active,true);
+  assert.equal(steamState(hazard,cycleStart+6).remaining,3);
+ }
+});
+test('the green exit completes the route before the ladder end once both valves are open',()=>{
+ const opened={left:true,right:true};
+ assert.equal(reachedPipeExit(TOTAL_LENGTH-50,opened),false);
+ assert.equal(reachedPipeExit(TOTAL_LENGTH-33,opened),true);
+ assert.equal(reachedPipeExit(TOTAL_LENGTH,{left:true}),false);
+});
+test('ON steam blocks airborne player, OFF steam still requires jump',()=>{const h=HAZARDS[0];assert.equal(safeFromSteam(h.center,.6,2.99),false);assert.equal(safeFromSteam(h.center,-1,3),false);assert.equal(safeFromSteam(h.center,.6,3),true);assert.equal(safeFromSteam(h.center,.6,6),false);});
 test('crawl strokes include a push and near-stationary rest',()=>{assert.ok(crawlRate(.06)>1.3);assert.ok(crawlRate(.33)<.15);assert.equal(CRAWL_STROKE_SECONDS,.42);});
 test('both additional ladders align with the climb-only route segments',()=>{assert.equal(SEGMENTS[3].from[0],211);assert.equal(SEGMENTS[3].to[0],211);assert.equal(SEGMENTS[5].from[0],1538);assert.equal(SEGMENTS[5].to[0],1538);assert.equal(movementForKey(SEGMENTS[5].start+50,'down').delta,1);assert.equal(movementForKey(SEGMENTS[5].start+50,'right').delta,0);});
 test('empty hand is not a fist',()=>assert.equal(fistScore(null).fist,false));

@@ -1,12 +1,12 @@
 // Route follows the reference map. The player has a single path coordinate s;
 // movement can ONLY occur along one of these six pipe/ladder pieces.
 export const SEGMENTS=[
- {id:'bottom',label:'底层输送管',from:[121,826],to:[1249,826],forward:'right'},
- {id:'ladder',label:'右侧梯子',from:[1249,826],to:[1249,476],forward:'up'},
- {id:'middle',label:'中层回流管',from:[1249,476],to:[211,476],forward:'left'},
- {id:'left-rise',label:'左侧攀爬梯',from:[211,476],to:[211,237],forward:'up'},
- {id:'top',label:'顶层排气管',from:[211,237],to:[1538,237],forward:'right'},
- {id:'right-down',label:'右侧出口梯',from:[1538,237],to:[1538,800],forward:'down'}
+ {id:'bottom',label:'底层输送管',labelEn:'Lower service pipe',from:[121,826],to:[1249,826],forward:'right'},
+ {id:'ladder',label:'右侧梯子',labelEn:'Right ladder',from:[1249,826],to:[1249,476],forward:'up'},
+ {id:'middle',label:'中层回流管',labelEn:'Middle return pipe',from:[1249,476],to:[211,476],forward:'left'},
+ {id:'left-rise',label:'左侧攀爬梯',labelEn:'Left ladder',from:[211,476],to:[211,237],forward:'up'},
+ {id:'top',label:'顶层排气管',labelEn:'Upper exhaust pipe',from:[211,237],to:[1538,237],forward:'right'},
+ {id:'right-down',label:'右侧出口梯',labelEn:'Exit ladder',from:[1538,237],to:[1538,800],forward:'down'}
 ];
 export const DIR_OPPOSITE={left:'right',right:'left',up:'down',down:'up'};
 let dist=0;
@@ -19,9 +19,15 @@ export const HAZARDS=[
  {id:'steam-top',segment:'top',center:segById('top').start+(853-211),halfWidth:45,name:'第三处间歇喷气',phase:0.95}
 ];
 export const VALVES=[
- {id:'left',name:'左侧分流阀门',at:segById('middle').start+(1249-447),position:[351,445],hint:'转动左侧阀门，才能向左进入上升管'},
- {id:'right',name:'顶层分流阀门',at:segById('top').start+(1240-211),position:[1319,211],hint:'转动右侧阀门，才能进入右侧下降管'}
+ {id:'left',name:'左侧分流阀门',nameEn:'Left diversion valve',at:segById('middle').start+(1249-447),position:[351,445],hint:'转动左侧阀门，才能向左进入上升管'},
+ {id:'right',name:'顶层分流阀门',nameEn:'Upper diversion valve',at:segById('top').start+(1240-211),position:[1319,211],hint:'转动右侧阀门，才能进入右侧下降管'}
 ];
+const EXIT_GRATE_ENTRY = TOTAL_LENGTH - 34;
+
+export function reachedPipeExit(s, opened) {
+ return s >= EXIT_GRATE_ENTRY && VALVES.every(({id}) => opened[id]);
+}
+
 export function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 export function routeAt(s){
  const value=clamp(s,0,TOTAL_LENGTH);
@@ -61,9 +67,9 @@ export function clampAtLockedValve(oldS,newS,opened){
  return {s:newS,blocked:null};
 }
 export function hazardAt(s){return HAZARDS.find(h=>Math.abs(h.center-s)<=h.halfWidth)||null;}
-// v1.2: much shorter OFF window for more difficulty.
-export const STEAM_PERIOD=5.6;
-export const STEAM_ON_DURATION=4.2;
+export const STEAM_ON_DURATION=3;
+export const STEAM_OFF_DURATION=3;
+export const STEAM_PERIOD=STEAM_ON_DURATION+STEAM_OFF_DURATION;
 export function steamState(h, seconds){
  const t=((seconds+(h?.phase??0))%STEAM_PERIOD+STEAM_PERIOD)%STEAM_PERIOD;
  const active=t<STEAM_ON_DURATION;

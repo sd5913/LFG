@@ -4,10 +4,9 @@
 
 ## 在 VS Code 运行
 
-1. 解压 ZIP，用 VS Code **打开 `LFG_Pipe_Room_01_v1.2` 文件夹**（里面应看到 `package.json`）。
-2. 菜单 Terminal → New Terminal，输入 `npm start`。
-3. Chrome / Edge 打开 http://localhost:5173 。无需 `npm install`。
-4. 如果旧版已经占用 5173，在旧版 Terminal 按 `Ctrl+C`。也可以用 PowerShell `$env:PORT=5174; npm start`，然后打开 http://localhost:5174 。
+1. 在仓库根目录安装依赖，然后运行 `npm run dev`。也可以在 `Pipe_Room_demo_v1` 目录运行 `npm start`，启动同一套游戏。
+2. 在浏览器打开终端显示的本地地址，从第一关开始。进入绿色出口后，自动进入第二关展厅。
+3. 要直接调试管道页面，可以在本地地址后加 `/Pipe_Room_demo_v1/index.html`。
 
 ## 新版关键玩法
 
@@ -21,7 +20,7 @@
 | 阀门 | 靠近按 `E` | 弹出摄像头开阀界面：握拳 → 保持握拳并倾斜。亦可按住 Enter 1.2 秒进行明确标注的模拟测试。 |
 | 重试 | 碰到蒸汽或未跳过断口 | 返回该断口前的安全位置，短暂击退冷却，避免连续误伤。 |
 
-当前蒸汽节奏：每个喷气口约 **喷气 3.9 秒 → 停喷 2.7 秒**，三个喷气口的起始相位不同（不同时停喷）。可以在 `src/route.js` 中调整 `STEAM_PERIOD=6.6`、`STEAM_ON_DURATION=3.9` 及每个 hazard 的 `phase`。
+每个喷气口喷气 **3 秒**，停喷 **3 秒**，三个机关的起始相位不同。老鼠在开始移动或重试后约 **8 秒**首次出现，之后每 **9–13 秒**刷新一次。
 
 ## 路线
 
@@ -40,7 +39,7 @@
 - 想调人物整体移动速度：`src/game.js` 顶部 `PLAYER_SPEED=218`，建议 190–235 之间试。
 - 想让“爬一下，停一下”更明显：`src/route.js` `CRAWL_STROKE_SECONDS=.36`、`crawlRate()` 中尾段的 `return .08`（停顿移动倍率），延长停顿段可增加顿挫。
 - 想调整跳跃滞空：`src/game.js` `JUMP_DURATION=1.2`；`src/route.js` 的 `jumpHeight(elapsed,duration=1.2)` 同步调整。
-- 想延长停喷窗口：降低 `STEAM_ON_DURATION`，不要只改视觉效果，应同时保留碰撞判断。
+- 想延长停喷窗口：调整 `src/route.js` 的 `STEAM_OFF_DURATION`，倒计时和碰撞会共用该数值。
 
 ## 摄像头与代码整合
 
