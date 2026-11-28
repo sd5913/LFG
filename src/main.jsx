@@ -8,6 +8,7 @@ import { GameplayHud } from './gameplay-hud.jsx';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import { TreasureUnlock } from './treasure-unlock.jsx';
 import { StreetEscape } from './street-escape.jsx';
+import { Cutscene } from './cutscene.jsx';
 import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from './game-locale.js';
 import { GameCamera, useCameraSession, useFrameCamera, useGameCamera } from './use-game-camera.js';
 import { GameLanguage, useFrameLanguage, useGameText } from './use-game-language.js';
@@ -142,11 +143,13 @@ function App() {
     enterMuseum();
   }, [enterMuseum]);
 
-  const enterStreetEscape = useCallback(() => {
+  const startMuseumExit = useCallback(() => {
     setResumeState((previous) => previous ? { ...previous, treasureUnlocked: true } : previous);
     setTreasureUnlockActive(false);
-    setStage('escape');
+    setStage('museum-exit');
   }, []);
+
+  const enterStreetEscape = useCallback(() => setStage('escape'), []);
 
   useEffect(() => {
     if (!activeExhibitId) return undefined;
@@ -165,6 +168,12 @@ function App() {
   </section></main>;
 
   if (stage === 'pipe') return <PipeRoom onComplete={enterMuseumFromPipe} />;
+
+  if (stage === 'museum-exit') return <Cutscene
+    file="01-museum-to-street.mp4"
+    label={['过场动画：带着宝藏离开展厅', 'Cutscene: Taking the treasure out of the gallery']}
+    onComplete={enterStreetEscape}
+  />;
 
   if (stage === 'escape') return <StreetEscape
     alertLevel={resumeState?.alertLevel ?? 0}
@@ -191,7 +200,7 @@ function App() {
     cameraStream={cameraStream}
     alertLevel={resumeState?.alertLevel ?? 0}
     onExit={() => setTreasureUnlockActive(false)}
-    onComplete={enterStreetEscape}
+    onComplete={startMuseumExit}
   />;
 
   return <RoomExperience

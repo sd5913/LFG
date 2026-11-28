@@ -11,6 +11,20 @@ body { min-width: 320px; min-height: 100vh; margin: 0; overflow: hidden; backgro
 .game-language button[aria-pressed='true'] { background: #e8c683; color: #122634; font-weight: 800; }
 .game-shell { display: grid; width: 100vw; min-height: 100vh; place-items: center; background: #08171e; }
 .stage-shell { --gameplay-hud-height: 10.4%; position: relative; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #0b202a; }
+.stage-shell.cutscene-stage { width: min(100vw, calc(100dvh * 16 / 9)); background: #0a1522; }
+.cutscene-video { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.cutscene-skip {
+  position: absolute;
+  right: clamp(8px, 2vw, 24px);
+  bottom: clamp(8px, 2vw, 24px);
+  padding: .45em .8em;
+  border: 2px solid #b89458;
+  background: #091523e6;
+  color: #ffdf9c;
+  font: inherit;
+  cursor: pointer;
+}
+.cutscene-skip:hover { background: #26374a; }
 .game-host { position: absolute; inset: 0; overflow: hidden; }
 .game-host canvas { display: block; image-rendering: pixelated; outline: 0; }
 .room-hud { position: absolute; top: 0; right: 0; left: 0; height: 9.4079%; pointer-events: none; color: #f3dcaa; font-family: ui-monospace, monospace; }

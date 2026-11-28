@@ -1,6 +1,7 @@
 import { publicAsset } from './public-asset.js';
 import { useFrameCamera, useGameCamera } from './use-game-camera.js';
 import { GameHudControls } from './gameplay-hud.jsx';
+import { Cutscene } from './cutscene.jsx';
 import { useFrameLanguage, useGameText } from './use-game-language.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createStreetRoute, fallsIntoStreetGap, MODULE_TYPES, ROAD_GAP_ART_WIDTH, ROAD_GAP_LEFT_LIP, ROAD_GAP_RIGHT_LIP, SHORT_BARRICADE_ART_WIDTH, STREET_PLAYER_SPAWN, STREET_SPEED } from './street-route.js';
@@ -132,6 +133,7 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
   const { status: cameraStatus } = useGameCamera();
   const cameraRequestingRef = useRef(false);
   const [view, setView] = useState(() => buildView(routeRef.current, runtimeRef.current));
+  const [endingFinished, setEndingFinished] = useState(false);
   const inChallenge = view.phase === 'challenge';
   const syncChallengeCamera = useFrameCamera(challengeRef, inChallenge);
 
@@ -145,6 +147,7 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
     routeRef.current = nextRoute;
     runtimeRef.current = createEscapeRuntime(alertLevel, nextRoute);
     heldRef.current = createHeldInputs();
+    setEndingFinished(false);
     setRoute(nextRoute);
     setView(buildView(nextRoute, runtimeRef.current));
   }, [alertLevel]);
@@ -286,6 +289,12 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
   }, []);
+
+  if (view.phase === 'complete' && !endingFinished) return <Cutscene
+    file="02-getaway-van.mp4"
+    label={['结尾动画：搭上接应车', 'Ending: Leaving in the getaway van']}
+    onComplete={() => setEndingFinished(true)}
+  />;
 
   const recovering = view.phase === 'recovering';
   const playerBottom = 27 + ((-view.y) / VIEW_HEIGHT) * 100;
