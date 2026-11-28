@@ -1,6 +1,5 @@
 import { publicAsset } from './public-asset.js';
 import { useFrameCamera, useGameCamera } from './use-game-camera.js';
-import { GameHudControls } from './gameplay-hud.jsx';
 import { Cutscene } from './cutscene.jsx';
 import { useFrameLanguage, useGameText } from './use-game-language.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -11,7 +10,6 @@ import { advanceStreetPursuit, createStreetGuard, recoverFromStreetObstacle, set
 const VIEW_WIDTH = 1600;
 const VIEW_HEIGHT = 900;
 const VIEW_UPDATE_INTERVAL_MS = 1000 / 30;
-const ROUTE_CHECKPOINTS = [12, 38, 64, 88];
 // The 317×302 road tile is cropped from the 2172px-wide gap artwork.
 const ROAD_TILE_SCALE = ROAD_GAP_ART_WIDTH / 2172;
 const ROAD_TILE_SOURCE_TOP = 367;
@@ -86,11 +84,6 @@ function buildView(route, runtime) {
     camera,
     instruction: nextInstruction(route, runtime.x),
   };
-}
-
-function formatClock(seconds) {
-  const whole = Math.max(0, Math.floor(seconds));
-  return `${String(Math.floor(whole / 60)).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`;
 }
 
 function RoadGap({ collision, camera }) {
@@ -299,7 +292,6 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
   const recovering = view.phase === 'recovering';
   const playerBottom = 27 + ((-view.y) / VIEW_HEIGHT) * 100;
   const roadOffset = -((view.camera % ROAD_TILE_WIDTH) / (VIEW_WIDTH - ROAD_TILE_WIDTH)) * 100;
-  const progress = Math.min(100, Math.max(0, ((view.x - STREET_PLAYER_SPAWN) / (route.van.triggerX - STREET_PLAYER_SPAWN)) * 100));
   const activeInstruction = view.instruction;
   const playerArt = view.y < 0
     ? JUMP_PLAYER_ART
@@ -374,33 +366,6 @@ export function StreetEscape({ onExit, alertLevel = 0 }) {
   return <main className="escape-app">
     <section ref={stageRef} className="escape-stage" tabIndex={-1} aria-label={t('Museum Heist 第三关：街头逃脱', 'Museum Heist Stage 3: Street Escape')}>
       {scene}
-      <header className="escape-top-hud" aria-label={t('逃脱状态栏', 'Escape HUD')}>
-        <img className="escape-top-hud-background" src={publicAsset('stealth-ui/top_hud_background.png')} alt="" />
-        <div className="escape-alert">
-          <img className="escape-siren" src={publicAsset('stealth-ui/alarm_siren.png')} alt="" />
-          <div className="escape-meter" role="meter" aria-label={t('警戒', 'Alert')} aria-valuemin={0} aria-valuemax={STREET_MAX_ALERT} aria-valuenow={view.alertLevel}>
-            <img src={publicAsset('stealth-ui/alarm_meter_frame.png')} alt="" />
-            <img className="escape-meter-fill" style={{ clipPath: `inset(0 ${STREET_MAX_ALERT - view.alertLevel}% 0 0)` }} src={publicAsset('stealth-ui/alarm_meter_fill_segments.png')} alt="" />
-          </div>
-        </div>
-        <div className="escape-route-hud">
-          <img className="escape-route-player" src={publicAsset('stealth-ui/player_marker.png')} alt={t('小偷', 'Thief')} />
-          <div className="escape-route-line" role="progressbar" aria-label={t('逃离进度', 'Escape progress')} aria-valuenow={Math.round(progress)}>
-            <span className="escape-route-fill" style={{ width: `${progress}%` }} />
-            {ROUTE_CHECKPOINTS.map((checkpoint) => (
-              <i key={checkpoint} className={progress >= checkpoint ? 'reached' : undefined} style={{ left: `${checkpoint}%` }} />
-            ))}
-          </div>
-          <img className="escape-route-van" src={publicAsset('street-escape/end-getaway-van.png')} alt={t('接应车', 'Getaway van')} />
-        </div>
-        <div className="escape-loot-hud">
-          <img src={publicAsset('stealth-ui/treasure_chest.png')} alt={t('已取得的宝藏', 'Stolen treasure')} />
-          <span><b>{Math.round(progress)}%</b><small>{formatClock(view.elapsed)}</small></span>
-          {!inChallenge && <button type="button" onClick={onExit}>{t('返回展厅', 'Back to gallery')}</button>}
-        </div>
-        <GameHudControls onPointerUse={() => (challengeRef.current ?? stageRef.current)?.focus()} />
-      </header>
     </section>
-    <p className="escape-note" style={{ visibility: inChallenge ? 'hidden' : undefined }}>{t('每次进入都会生成新的单向逃脱路线 · 像素素材使用原始硬边缩放', 'A new escape route is generated each run · Crisp pixel art')}</p>
   </main>;
 }

@@ -11,7 +11,7 @@ export const DEFAULT_THRESHOLDS = Object.freeze({
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const fingerRatio = (points, mcp, pip, tip) => distance(points[tip], points[mcp]) / Math.max(distance(points[pip], points[mcp]), 1e-5);
 
-export function analyzeHand(landmarks, thresholds = {}) {
+export function analyzeHand(landmarks, thresholds = {}, { aspectRatio = 1, rotating = false } = {}) {
   if (!Array.isArray(landmarks) || landmarks.length < 21 || landmarks.some((point) => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
     return { gesture: GESTURES.NONE, angle: null };
   }
@@ -24,11 +24,15 @@ export function analyzeHand(landmarks, thresholds = {}) {
   };
   const curledOthers = [fingers.middle, fingers.ring, fingers.pinky].every((value) => value < threshold.otherCurl);
   const isPinch = pinchDistance < threshold.pinch && fingers.index > threshold.pinchIndex;
-  const isFist = fingers.index < threshold.fistIndex && [fingers.middle, fingers.ring, fingers.pinky].every((value) => value < threshold.fistCurl);
+  const isFist = fingers.index < (rotating ? 1.55 : threshold.fistIndex) && [fingers.middle, fingers.ring, fingers.pinky].every((value) => value < (rotating ? 2 : threshold.fistCurl));
   const isPoint = fingers.index > threshold.pointExtend && curledOthers && pinchDistance >= threshold.pinch;
   const isOpen = [fingers.index, fingers.middle, fingers.ring, fingers.pinky].every((value) => value > 1.65);
-  const gesture = isPinch ? GESTURES.PINCH : isFist ? GESTURES.FIST : isPoint ? GESTURES.POINT : isOpen ? GESTURES.OPEN : GESTURES.UNKNOWN;
-  return { gesture, angle: Math.atan2(landmarks[17].y - landmarks[5].y, landmarks[17].x - landmarks[5].x) };
+  const gesture = rotating && isFist ? GESTURES.FIST : isPinch ? GESTURES.PINCH : isFist ? GESTURES.FIST : isPoint ? GESTURES.POINT : isOpen ? GESTURES.OPEN : GESTURES.UNKNOWN;
+  const knuckles = [5, 9, 13, 17].map(index => landmarks[index]);
+  const x = (knuckles.reduce((sum, point) => sum + point.x, 0) / 4 - landmarks[0].x) * aspectRatio;
+  const y = knuckles.reduce((sum, point) => sum + point.y, 0) / 4 - landmarks[0].y;
+  const angle = Math.hypot(x, y) > 0.01 ? Math.atan2(y, x) : null;
+  return { gesture, angle };
 }
 
 export const HAND_EDGES = Object.freeze([

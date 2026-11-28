@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, GUARD, GUARD_ART, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLAYER_JUMP_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
+import { BACKGROUND, DISPLAY_CASES, EXHIBIT_HIGHLIGHT_ART, GAME, GUARD, GUARD_ART, GALLERY_GUARDS, HUD_HEIGHT, OBSTACLES, PLAYER, PLAYER_ART, PLAYER_JUMP_ART, PLANTS, PLANT_FOREGROUND, ROOM_SCALE, SCENERY, SCULPTURE_ART, TREASURE_DISPLAY, WALKABLE, roomPoint } from './config.js';
+import { galleryAlertRate } from './gallery-guards.js';
 import { KEY_DIRECTIONS, movementIntent } from './movement.js';
 import { plantPixels } from './plant-foreground.js';
 import { sceneryPixels, opaqueRectangles } from './scenery-foreground.js';
@@ -99,7 +100,7 @@ export default class Room1 extends Phaser.Scene {
     this.player.body.setAllowGravity(false);
     this.player.setPushable(false);
     this.collider = this.physics.add.collider(this.player, this.blockers);
-    this.createGuard();
+    this.guards = GALLERY_GUARDS.map(profile => this.createGuard(profile));
     this.debugGraphics = this.add.graphics().setDepth(20000);
     if (!canResume) this.playEntrance();
     this.installInput();
@@ -292,89 +293,125 @@ export default class Room1 extends Phaser.Scene {
     // scales while the room and sprite images retain nearest-neighbour sampling.
   }
 
-  createGuard() {
-    const saved = this.resumeState?.guard;
-    this.guardFacing = GUARD_ART[saved?.facing] ? saved.facing : GUARD.initialFacing;
-    const start = saved ?? GUARD.spawn;
-    this.guard = this.physics.add.sprite(start.x, start.y, `guard-${this.guardFacing}`).setOrigin(0.5, 1)
+  createGuard(profile) {
+    const saved = this.resumeState?.guards?.find(guard => guard.id === profile.id)
+      ?? (profile.id === 'gallery' ? this.resumeState?.guard : null);
+    const facing = GUARD_ART[saved?.facing] ? saved.facing : profile.initialFacing;
+    const start = saved ?? profile.spawn;
+    const sprite = this.physics.add.sprite(start.x, start.y, `guard-${facing}`).setOrigin(0.5, 1)
       .setDepth(start.y).setCollideWorldBounds(true).setPushable(false);
-    this.guard.body.setSize(GUARD.bodyWidth, GUARD.bodyHeight, false)
+    sprite.body.setSize(GUARD.bodyWidth, GUARD.bodyHeight, false)
       .setOffset((GUARD.textureSize - GUARD.bodyWidth) / 2, GUARD.textureSize - GUARD.bodyHeight);
-    this.guard.body.setAllowGravity(false);
-    this.physics.add.collider(this.guard, this.blockers);
-    this.guardState = saved?.mode === 'chase' ? 'chase' : 'patrol';
-    this.guardPatrolIndex = 1;
-    this.guardPreviousPosition = { x: this.guard.x, y: this.guard.y };
-    this.guardStuckAt = 0;
-    this.pickPatrolTarget();
-    this.guardVision = this.add.graphics();
+    sprite.body.setAllowGravity(false);
+    this.physics.add.collider(sprite, this.blockers);
+    const confusionRemaining = Math.max(0, saved?.confusionRemaining ?? 0);
+    const mode = saved?.mode === 'confused' && confusionRemaining > 0 ? 'confused'
+      : saved?.mode === 'chase' ? 'chase' : 'patrol';
+    const npc = {
+      profile, sprite, facing, mode, confusionRemaining,
+      patrolIndex: saved?.patrolIndex ?? 0,
+      patrolDirection: saved?.patrolDirection ?? (Math.random() < .5 ? -1 : 1),
+      previousPosition: { x: sprite.x, y: sprite.y },
+      stuckAt: 0,
+      vision: this.add.graphics(),
+      question: this.add.text(sprite.x, sprite.y - GUARD.artHeight - 3, '?', {
+        fontFamily: '"Press Start 2P", monospace', fontSize: '30px',
+        color: '#ffdf79', stroke: '#081722', strokeThickness: 5,
+      }).setOrigin(.5, 1).setDepth(20001).setVisible(mode === 'confused'),
+    };
+    npc.target = profile.patrolPoints[npc.patrolIndex];
+    return npc;
   }
 
-  pickPatrolTarget() {
-    const count = GUARD.patrolPoints.length;
-    // Pick clockwise or anti-clockwise at a safe route node. Choosing any
-    // arbitrary room point would send the guard directly into display cases.
-    const step = Math.random() < 0.5 ? -1 : 1;
-    this.guardPatrolIndex = (this.guardPatrolIndex + step + count) % count;
-    this.guardTarget = GUARD.patrolPoints[this.guardPatrolIndex];
+  pickPatrolTarget(npc) {
+    const count = npc.profile.patrolPoints.length;
+    npc.patrolIndex = (npc.patrolIndex + npc.patrolDirection + count) % count;
+    npc.target = npc.profile.patrolPoints[npc.patrolIndex];
   }
 
-  updateGuard(time) {
-    const visible = this.playerInGuardVision();
-    if (visible) {
-      this.guardState = 'chase';
+  updateGuard(npc, time, delta) {
+    const { sprite, profile } = npc;
+    if (npc.mode === 'confused') {
+      sprite.setVelocity(0, 0);
+      npc.vision.clear();
+      npc.question.setPosition(sprite.x, Math.max(HUD_HEIGHT + 32, sprite.y - GUARD.artHeight - 3)).setVisible(true);
+      npc.confusionRemaining = Math.max(0, npc.confusionRemaining - delta);
+      if (npc.confusionRemaining === 0) {
+        npc.mode = 'patrol';
+        npc.question.setVisible(false);
+        this.pickPatrolTarget(npc);
+      }
+      return { visible: false, alert: false };
     }
-    // Once the guard has detected the thief, the chase persists even if the
-    // thief steps behind an exhibit. Only a completed pose scan resets it.
-    const target = this.guardState === 'chase' ? this.player : this.guardTarget;
-    if (target && Phaser.Math.Distance.Between(this.guard.x, this.guard.y, target.x, target.y) < 14) {
-      if (this.guardState === 'patrol') this.pickPatrolTarget();
-      this.guard.setVelocity(0, 0);
+    const visible = this.playerInGuardVision(npc);
+    if (visible) {
+      npc.mode = 'chase';
+    }
+    const target = npc.mode === 'chase' ? this.player : npc.target;
+    const chasing = npc.mode === 'chase';
+    const stopDistance = chasing ? 75 : 14;
+    const distance = target ? Phaser.Math.Distance.Between(sprite.x, sprite.y, target.x, target.y) : Infinity;
+    if (target && distance <= stopDistance) {
+      if (npc.mode === 'patrol') this.pickPatrolTarget(npc);
+      sprite.setVelocity(0, 0);
     } else if (target) {
-      const angle = Phaser.Math.Angle.Between(this.guard.x, this.guard.y, target.x, target.y);
-      this.guard.setVelocity(Math.cos(angle) * GUARD.speed, Math.sin(angle) * GUARD.speed);
+      const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, target.x, target.y);
+      // Prevent the last movement step from overshooting the chase stop distance.
+      const speed = chasing
+        ? Math.min(profile.speed, (distance - stopDistance) / Math.max(delta / 1000, 1 / 120))
+        : profile.speed;
+      sprite.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
       const dx = Math.cos(angle), dy = Math.sin(angle);
       const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-      if (facing !== this.guardFacing) { this.guardFacing = facing; this.guard.setTexture(`guard-${facing}`); }
+      if (facing !== npc.facing) { npc.facing = facing; sprite.setTexture(`guard-${facing}`); }
     }
-    this.guard.setDepth(this.guard.y);
-    const moved = Phaser.Math.Distance.Between(this.guard.x, this.guard.y,
-      this.guardPreviousPosition.x, this.guardPreviousPosition.y);
-    if (this.guardState === 'patrol' && target && moved < 0.5 &&
-      Phaser.Math.Distance.Between(this.guard.x, this.guard.y, target.x, target.y) > 24) {
-      this.guardStuckAt ||= time;
-      if (time - this.guardStuckAt > 500) { this.pickPatrolTarget(); this.guardStuckAt = 0; }
-    } else this.guardStuckAt = 0;
-    this.guardPreviousPosition = { x: this.guard.x, y: this.guard.y };
-    // Red is the guard's alert state, not only the instant line-of-sight
-    // check. It remains red through the pursuit until a pose scan succeeds.
-    const alert = visible || this.guardState === 'chase';
-    this.drawGuardVision(alert);
-    this.publish({ guardMode: this.guardState, guardSeeing: visible, guardAlert: alert });
+    sprite.setDepth(sprite.y);
+    const moved = Phaser.Math.Distance.Between(sprite.x, sprite.y, npc.previousPosition.x, npc.previousPosition.y);
+    if (npc.mode === 'patrol' && target && moved < 0.5 &&
+      Phaser.Math.Distance.Between(sprite.x, sprite.y, target.x, target.y) > 24) {
+      npc.stuckAt ||= time;
+      if (time - npc.stuckAt > 500) { this.pickPatrolTarget(npc); npc.stuckAt = 0; }
+    } else npc.stuckAt = 0;
+    npc.previousPosition = { x: sprite.x, y: sprite.y };
+    const alert = visible || npc.mode === 'chase';
+    this.drawGuardVision(npc, alert);
+    return { visible, alert };
   }
 
-  playerInGuardVision() {
+  playerInGuardVision(npc) {
     if (this.hiddenExhibitId) return false;
-    const dx = this.player.x - this.guard.x, dy = this.player.y - this.guard.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance > GUARD.visionRange || distance < 1) return false;
-    const directions = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-    if (Math.abs(Phaser.Math.Angle.Wrap(Phaser.Math.Angle.Between(this.guard.x, this.guard.y, this.player.x, this.player.y) - directions[this.guardFacing])) > GUARD.visionHalfAngle) return false;
-    const ray = new Phaser.Geom.Line(this.guard.x, this.guard.y - GUARD.textureSize * 0.62, this.player.x, this.player.y - PLAYER.bodyHeight / 2);
+    const { origin, left, right } = this.guardVisionTriangle(npc);
+    const art = PLAYER_ART[this.facing];
+    const scale = PLAYER.artHeight / art.bounds[3];
+    const playerRect = new Phaser.Geom.Rectangle(
+      this.player.x - (art.footX - art.bounds[0]) * scale,
+      this.player.y - PLAYER.artHeight,
+      art.bounds[2] * scale, PLAYER.artHeight,
+    );
+    const triangle = new Phaser.Geom.Triangle(origin.x, origin.y, left.x, left.y, right.x, right.y);
+    if (!Phaser.Geom.Intersects.RectangleToTriangle(playerRect, triangle)) return false;
+    const ray = new Phaser.Geom.Line(origin.x, origin.y, this.player.x, this.player.y - PLAYER.bodyHeight / 2);
     return !OBSTACLES.some(rect => Phaser.Geom.Intersects.LineToRectangle(ray, new Phaser.Geom.Rectangle(rect.x, rect.y, rect.width, rect.height)));
   }
 
-  drawGuardVision(seesPlayer) {
+  guardVisionTriangle(npc) {
+    const { sprite, profile, facing } = npc;
     const angleByFacing = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-    const angle = angleByFacing[this.guardFacing];
-    const origin = { x: this.guard.x, y: this.guard.y - GUARD.textureSize * 0.62 };
-    const left = { x: origin.x + Math.cos(angle - GUARD.visionHalfAngle) * GUARD.visionRange, y: origin.y + Math.sin(angle - GUARD.visionHalfAngle) * GUARD.visionRange };
-    const right = { x: origin.x + Math.cos(angle + GUARD.visionHalfAngle) * GUARD.visionRange, y: origin.y + Math.sin(angle + GUARD.visionHalfAngle) * GUARD.visionRange };
-    this.guardVision.clear().fillStyle(seesPlayer ? 0xef5b57 : 0xf7f3df, seesPlayer ? 0.34 : 0.19)
+    const angle = angleByFacing[facing];
+    const origin = { x: sprite.x, y: sprite.y - GUARD.textureSize * 0.62 };
+    const left = { x: origin.x + Math.cos(angle - profile.visionHalfAngle) * profile.visionRange, y: origin.y + Math.sin(angle - profile.visionHalfAngle) * profile.visionRange };
+    const right = { x: origin.x + Math.cos(angle + profile.visionHalfAngle) * profile.visionRange, y: origin.y + Math.sin(angle + profile.visionHalfAngle) * profile.visionRange };
+    return { origin, left, right };
+  }
+
+  drawGuardVision(npc, seesPlayer) {
+    const { sprite, vision } = npc;
+    const { origin, left, right } = this.guardVisionTriangle(npc);
+    vision.clear().fillStyle(seesPlayer ? 0xef5b57 : 0xf7f3df, seesPlayer ? 0.34 : 0.19)
       .fillTriangle(origin.x, origin.y, left.x, left.y, right.x, right.y)
       .lineStyle(2, seesPlayer ? 0xff8173 : 0xffffff, seesPlayer ? 0.82 : 0.55)
       .lineBetween(origin.x, origin.y, left.x, left.y).lineBetween(origin.x, origin.y, right.x, right.y)
-      .setDepth(this.guard.y - 0.2);
+      .setDepth(sprite.y - 0.2);
   }
 
   installInput() {
@@ -431,9 +468,15 @@ export default class Room1 extends Phaser.Scene {
 
   getResumeState() {
     if (!this.player) return null;
-    return { x: this.player.x, y: this.player.y, facing: this.facing, treasureUnlocked: this.treasureUnlocked, alertLevel: this.alertLevel, guard: this.guard && {
-      x: this.guard.x, y: this.guard.y, facing: this.guardFacing, mode: this.guardState,
-    } };
+    return {
+      x: this.player.x, y: this.player.y, facing: this.facing,
+      treasureUnlocked: this.treasureUnlocked, alertLevel: this.alertLevel,
+      guards: this.guards.map(npc => ({
+        id: npc.profile.id, x: npc.sprite.x, y: npc.sprite.y,
+        facing: npc.facing, mode: npc.mode, confusionRemaining: npc.confusionRemaining,
+        patrolIndex: npc.patrolIndex, patrolDirection: npc.patrolDirection,
+      })),
+    };
   }
 
   toggleDebug() {
@@ -459,7 +502,12 @@ export default class Room1 extends Phaser.Scene {
     this.player.setDepth(this.player.y);
     this.updateExhibitHint();
     this.updateTreasureHint();
-    this.updateGuard(time);
+    const observations = this.guards.map(npc => this.updateGuard(npc, time, delta));
+    this.publish({
+      guardMode: this.guards.some(npc => npc.mode === 'chase') ? 'chase' : this.guards.some(npc => npc.mode === 'confused') ? 'confused' : 'patrol',
+      guardSeeing: observations.some(observation => observation.visible),
+      guardAlert: observations.some(observation => observation.alert),
+    });
     this.updateAlertLevel(delta);
     this.publish({ facing: this.facing, moving: input.vx !== 0 || input.vy !== 0 });
     this.drawDebug();
@@ -467,13 +515,13 @@ export default class Room1 extends Phaser.Scene {
 
   updateAlertLevel(delta) {
     const seconds = Math.min(delta / 1000, 0.1);
-    const rate = this.guardState === 'chase' ? 16 : -7;
+    const rate = galleryAlertRate(this.guards);
     this.alertLevel = Phaser.Math.Clamp(this.alertLevel + rate * seconds, 0, 100);
     if (this.alertLevel >= 100) {
       this.alertLevel = 100;
       this.gameOver = true;
       this.clearInput();
-      this.guard?.setVelocity(0, 0);
+      for (const npc of this.guards) npc.sprite.setVelocity(0, 0);
       this.physics.pause();
       this.publish({ alertLevel: this.alertLevel, gameOver: true });
       return;

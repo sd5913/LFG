@@ -4,7 +4,7 @@ import { GameplayHud } from './gameplay-hud.jsx';
 import { useGameText } from './use-game-language.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { analyzeHand, GESTURES, HAND_EDGES } from './hand-gestures.js';
-import { STEPS, UnlockMachine } from './unlock-machine.js';
+import { STEPS, UnlockMachine, ROTATION_TARGET_DEGREES } from './unlock-machine.js';
 
 const TASKS_VERSION = '0.10.14';
 const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VERSION}`;
@@ -47,9 +47,9 @@ function ChestUnlockSequence({ phase }) {
       <img className="unlock-chest-open" src={publicAsset('unlock-animation/chest_open.png')} alt="" />
       <div className="unlock-chest-lid"><img src={publicAsset('unlock-animation/chest_closed.png')} alt="" /></div>
       <div className="unlock-chest-dial">
-        <img className="unlock-chest-rotor" src={publicAsset('unlock-animation/dial_rotor.png')} alt="" />
-        <img className="unlock-chest-hub" src={publicAsset('unlock-animation/dial_hub.png')} alt="" />
-        <img className="unlock-chest-pointer" src={publicAsset('unlock-animation/dial_pointer.png')} alt="" />
+        <img className="unlock-chest-hub" src={`${ASSET_ROOT}/dial_base_new.png`} alt="" />
+        <img className="unlock-chest-rotor" src={`${ASSET_ROOT}/dial_ring_new.png`} alt="" />
+        <img className="unlock-chest-pointer" src={`${ASSET_ROOT}/dial_arrow_new.png`} alt="" />
       </div>
     </div>
     {phase === 'success' && <section className="unlock-success-card" role="status">
@@ -155,7 +155,10 @@ export function TreasureUnlock({ cameraStream, alertLevel, onComplete, onExit })
         lastVideoTimeRef.current = video.currentTime; lastInferenceRef.current = now;
         try {
           const landmarks = landmarkerRef.current?.detectForVideo(video, now)?.landmarks?.[0] ?? null;
-          const result = landmarks ? analyzeHand(landmarks) : null;
+          const result = landmarks ? analyzeHand(landmarks, {}, {
+            aspectRatio: video.videoWidth / Math.max(video.videoHeight, 1),
+            rotating: machineRef.current.stepIndex === 3,
+          }) : null;
           gestureRef.current = result?.gesture ?? GESTURES.NONE; angleRef.current = result?.angle ?? null;
           if (landmarks) lastSeenRef.current = now;
           const machineSnapshot = machineRef.current.update({ gesture: gestureRef.current, angle: angleRef.current, now });
@@ -188,11 +191,11 @@ export function TreasureUnlock({ cameraStream, alertLevel, onComplete, onExit })
   const hasRecentHand = scanning && performance.now() - lastSeenRef.current < 500;
   const expected = current === 3 ? GESTURES.FIST : step.id;
   const matching = hasRecentHand && lastGesture === expected && !snapshot.unlocked;
-  const holdLabel = current < 3 && !snapshot.unlocked ? t(`保持进度 ${(snapshot.progress * 2).toFixed(1)} / 2.0 秒`, `Hold ${(snapshot.progress * 2).toFixed(1)} / 2.0 s`) : snapshot.unlocked ? t('解锁完成', 'Unlock complete') : t(`旋转进度 ${snapshot.rotationDegrees}° / 50°`, `Rotation ${snapshot.rotationDegrees}° / 50°`);
+  const holdLabel = current < 3 && !snapshot.unlocked ? t(`保持进度 ${(snapshot.progress * 2).toFixed(1)} / 2.0 秒`, `Hold ${(snapshot.progress * 2).toFixed(1)} / 2.0 s`) : snapshot.unlocked ? t('解锁完成', 'Unlock complete') : t(`旋转进度 ${snapshot.rotationDegrees}° / ${ROTATION_TARGET_DEGREES}°`, `Rotation ${snapshot.rotationDegrees}° / ${ROTATION_TARGET_DEGREES}°`);
 
   return <main className="game-shell unlock-app" aria-label={t('宝箱手势解锁', 'Gesture chest unlock')}>
     <section className="stage-shell unlock-frame">
-      <GameplayHud alertLevel={alertLevel} currentRoom={3} />
+      <GameplayHud alertLevel={alertLevel} />
       <section className="unlock-stage" aria-label={t('四步手势解锁界面', 'Four-step gesture lock')}>
       <img className="unlock-static-shell" src={`${ASSET_ROOT}/ui_static_shell.png`} alt="" />
       <div className="unlock-top-cards" aria-label={t('解锁步骤', 'Unlock steps')}>{CARD_ASSETS.map((asset, index) => {
@@ -208,8 +211,9 @@ export function TreasureUnlock({ cameraStream, alertLevel, onComplete, onExit })
         <div className="unlock-hold-progress"><span>{holdLabel}</span><div><i style={{ transform: `scaleX(${snapshot.progress})` }} /></div></div>
       </section>
       <section className={`unlock-dial ${matching || (current === 3 && snapshot.progress > 0) ? 'active' : ''} ${current === 3 && !snapshot.unlocked ? 'rotating' : ''}`} aria-label={t('解锁转盘', 'Combination dial')}>
-        <img className="unlock-dial-rotor" style={{ transform: `rotate(${current === 3 ? Math.min(snapshot.rotationDegrees, 75) : Math.min(18, (current + snapshot.progress) * 6)}deg)` }} src={`${ASSET_ROOT}/dial_rotor.png`} alt={t('解锁转盘', 'Combination dial')} />
-        <img className="unlock-dial-hub" src={`${ASSET_ROOT}/dial_hub_keyhole.png`} alt={t('钥匙孔', 'Keyhole')} /><img className="unlock-dial-pointer" src={`${ASSET_ROOT}/dial_pointer.png`} alt="" /><img className="unlock-dial-cue" src={`${ASSET_ROOT}/rotation_arrow_clockwise.png`} alt={t('顺时针旋转示意', 'Clockwise rotation guide')} />
+        <img className="unlock-dial-hub" src={`${ASSET_ROOT}/dial_base_new.png`} alt={t('钥匙孔', 'Keyhole')} />
+        <img className="unlock-dial-rotor" style={{ transform: `rotate(${current === 3 ? Math.min(snapshot.rotationDegrees, ROTATION_TARGET_DEGREES) : Math.min(18, (current + snapshot.progress) * 6)}deg)` }} src={`${ASSET_ROOT}/dial_ring_new.png`} alt={t('解锁转盘', 'Combination dial')} />
+        <img className="unlock-dial-pointer" src={`${ASSET_ROOT}/dial_arrow_new.png`} alt="" />
       </section>
       <section className={`unlock-instruction ${current === 3 && !snapshot.unlocked ? 'rotate' : ''}`} aria-label={t('当前目标手势', 'Target gesture')}>
         <img className="unlock-target-icon" src={`${ASSET_ROOT}/${TARGET_ASSETS[current]}`} alt={t(...step.title)} /><img className="unlock-target-rotate" src={`${ASSET_ROOT}/target_pinch_and_rotate.png`} alt="" /><img className="unlock-rotation-arrow" src={`${ASSET_ROOT}/rotation_arrow_clockwise.png`} alt={t('顺时针旋转', 'Clockwise rotation')} />

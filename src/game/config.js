@@ -54,6 +54,22 @@ export const GUARD = Object.freeze({
   ]),
 });
 
+// Gallery NPC profiles share the same sprites and movement settings.
+export const GALLERY_GUARDS = Object.freeze([
+  Object.freeze({ ...GUARD, id: 'gallery', alertRate: 16 }),
+  Object.freeze({
+    ...GUARD,
+    id: 'treasure',
+    alertRate: 32,
+    spawn: Object.freeze(roomPoint(1450, 470)),
+    initialFacing: 'down',
+    patrolPoints: Object.freeze([
+      roomPoint(1450, 470), roomPoint(1450, 575),
+      roomPoint(1365, 575), roomPoint(1365, 430), roomPoint(1450, 430),
+    ]),
+  }),
+]);
+
 // Original four-direction guard sprites, cropped to their opaque art bounds.
 export const GUARD_ART = Object.freeze({
   right: { file: 'assets/guard/right.png', bounds: [155, 69, 287, 460], footX: 298 },

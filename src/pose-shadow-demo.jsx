@@ -341,7 +341,7 @@ export function PoseShadowDemo({ exhibitId, cameraStream, onComplete, alertLevel
         <img className="museum-backplate" src={asset('museum_scene_backplate.png')} alt="" />
         <div className="scene-dim" />
 
-        <GameplayHud alertLevel={alertLevel} currentRoom={3} />
+        <GameplayHud alertLevel={alertLevel} />
 
         <section className="challenge-layer">
           <div className="warning-banner">

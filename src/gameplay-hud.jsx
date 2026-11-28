@@ -1,6 +1,7 @@
 import { publicAsset } from './public-asset.js';
 import { useGameCamera } from './use-game-camera.js';
 import { useGameLanguage, useGameText } from './use-game-language.js';
+import { ProgressNavigation } from './progress-navigation.jsx';
 
 export function GameHudControls({ onPointerUse }) {
   const t = useGameText();
@@ -24,7 +25,17 @@ export function GameHudControls({ onPointerUse }) {
   </div>;
 }
 
-export function GameplayHud({ alertLevel = 0, currentRoom, onPointerUse }) {
+export function AlertMeterArt({ alertLevel = 0, max = 100 }) {
+  const percent = Math.max(0, Math.min(100, (Number.isFinite(alertLevel) ? alertLevel : 0) / max * 100));
+  return <>
+    <img src={publicAsset('stealth-ui/alarm_meter_frame.png')} alt="" />
+    <div className="alert-meter-window">
+      <img className="alert-meter-fill" style={{ clipPath: `inset(0 ${100 - percent}% 0 0)` }} src={publicAsset('stealth-ui/alarm_meter_fill_segments.png')} alt="" />
+    </div>
+  </>;
+}
+
+export function GameplayHud({ alertLevel = 0, onPointerUse }) {
   const t = useGameText();
   const alertPercent = Math.round(alertLevel);
   return <header className="room-hud gameplay-hud">
@@ -33,17 +44,10 @@ export function GameplayHud({ alertLevel = 0, currentRoom, onPointerUse }) {
       <img className="gameplay-siren" src={publicAsset('stealth-ui/alarm_siren.png')} alt="" />
       <span className="gameplay-alert-copy" aria-hidden="true">{t('警戒', 'Alert')}<strong>{alertPercent}%</strong></span>
       <div className="gameplay-meter">
-        <img src={publicAsset('stealth-ui/alarm_meter_frame.png')} alt="" />
-        <img className="gameplay-meter-fill" style={{ clipPath: `inset(0 ${100 - alertLevel}% 0 0)` }} src={publicAsset('stealth-ui/alarm_meter_fill_segments.png')} alt="" />
+        <AlertMeterArt alertLevel={alertLevel} />
       </div>
     </div>
-    <div className="gameplay-route" role="group" aria-label={t(`潜入路线：当前位置 ${currentRoom}`, `Infiltration route: checkpoint ${currentRoom}`)}>
-      {[1, 2, 3].map((room) => <div className={`gameplay-room-node ${room === currentRoom ? 'current' : ''}`} key={room}>
-        <img src={publicAsset('stealth-ui/room_house.png')} alt={t(`第 ${room} 个房间`, `Room ${room}`)} />
-        {room === currentRoom && <img className="gameplay-player-marker" src={publicAsset('stealth-ui/player_marker.png')} alt={t('小偷当前位置', 'Thief’s location')} />}
-      </div>)}
-      <img className="gameplay-treasure" src={publicAsset('stealth-ui/treasure_chest.png')} alt={t('最终宝箱', 'Treasure chest')} />
-    </div>
+    <ProgressNavigation />
     <GameHudControls onPointerUse={onPointerUse} />
   </header>;
 }

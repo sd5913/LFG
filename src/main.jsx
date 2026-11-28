@@ -4,7 +4,9 @@ import { createRoot } from 'react-dom/client';
 import Phaser from 'phaser';
 import Room1 from './game/Room1.js';
 import { GAME } from './game/config.js';
+import { afterSuccessfulPose } from './game/gallery-guards.js';
 import { GameplayHud } from './gameplay-hud.jsx';
+import { ProgressNavigationProvider } from './progress-navigation.jsx';
 import { PoseShadowDemo } from './pose-shadow-demo.jsx';
 import { TreasureUnlock } from './treasure-unlock.jsx';
 import { StreetEscape } from './street-escape.jsx';
@@ -13,6 +15,13 @@ import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from './gam
 import { GameCamera, useCameraSession, useFrameCamera, useGameCamera } from './use-game-camera.js';
 import { GameLanguage, useFrameLanguage, useGameText } from './use-game-language.js';
 import './styles.css';
+
+function restartGame() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('stage');
+  window.history.replaceState(window.history.state, '', url);
+  window.location.reload();
+}
 
 function PipeRoom({ onComplete }) {
   const frameRef = useRef(null);
@@ -46,7 +55,7 @@ function PipeRoom({ onComplete }) {
           frameRef.current?.focus();
         }}
       />
-      <GameplayHud alertLevel={alertLevel} currentRoom={1} onPointerUse={() => frameRef.current?.focus()} />
+      <GameplayHud alertLevel={alertLevel} onPointerUse={() => frameRef.current?.focus()} />
     </section>
   </main>;
 }
@@ -106,9 +115,9 @@ function RoomExperience({ onPoseDemo, onTreasureUnlock, resumeState }) {
   return <main className="game-shell">
     <section className="stage-shell" aria-label={t('Museum Heist 游戏区域', 'Museum Heist game area')}>
       <div ref={host} className="game-host" />
-      <GameplayHud alertLevel={state.alertLevel} currentRoom={3} />
+      <GameplayHud alertLevel={state.alertLevel} />
       {state.gameOver && <section className="game-over-panel" role="alert">
-        <span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={() => window.location.reload()}>{t('重新开始', 'Restart')}</button>
+        <span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={restartGame}>{t('重新开始', 'Restart')}</button>
       </section>}
       {state.nearTreasure && !state.treasureUnlocked && <p className="room-pose-hint">{t('宝箱就在前方 · 按空格键开始手势解锁', 'Chest ahead · Press Space to unlock')}</p>}
       {!state.nearTreasure && state.hiddenExhibitId && <p className="room-pose-hint">{cameraStatus === 'ready' ? t('安全遮蔽中 · 按空格键开始姿势扫描', 'In cover · Press Space to scan your pose') : t('安全遮蔽中 · 请先点击上方“开启扫描摄像头”', 'In cover · Enable the camera to scan your pose')}</p>}
@@ -133,6 +142,21 @@ function App() {
   const [treasureUnlockActive, setTreasureUnlockActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [resumeState, setResumeState] = useState(null);
+  const [testRun, setTestRun] = useState(0);
+
+  const selectTestStage = useCallback((node) => {
+    const nextStage = node === 0 ? 'pipe' : 'museum';
+    const url = new URL(window.location.href);
+    if (node === 0) url.searchParams.delete('stage');
+    else url.searchParams.set('stage', 'museum');
+    window.history.replaceState(window.history.state, '', url);
+    setActiveExhibitId(null);
+    setGameOver(false);
+    setResumeState(null);
+    setTreasureUnlockActive(node === 2);
+    setStage(nextStage);
+    setTestRun(run => run + 1);
+  }, []);
 
   const enterMuseum = useCallback(() => setStage('museum'), []);
 
@@ -162,9 +186,12 @@ function App() {
     return () => window.removeEventListener('keydown', exitChallenge);
   }, [activeExhibitId]);
 
+  const progressNode = stage === 'pipe' ? 0 : stage === 'museum' && !treasureUnlockActive ? 1 : 2;
+
+  function renderStage() {
   if (gameOver) return <main className="game-shell"><section className="stage-shell game-over-stage">
-    <section className="game-over-panel" role="alert"><span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={() => window.location.reload()}>{t('重新开始', 'Restart')}</button></section>
-    <GameplayHud alertLevel={resumeState?.alertLevel ?? 0} currentRoom={3} />
+    <section className="game-over-panel" role="alert"><span>{t('游戏结束', 'GAME OVER')}</span><strong>{t('你被捕了', 'You were caught')}</strong><button onClick={restartGame}>{t('重新开始', 'Restart')}</button></section>
+    <GameplayHud alertLevel={resumeState?.alertLevel ?? 0} />
   </section></main>;
 
   if (stage === 'pipe') return <PipeRoom onComplete={enterMuseumFromPipe} />;
@@ -185,12 +212,7 @@ function App() {
     cameraStream={cameraStream}
     alertLevel={resumeState?.alertLevel ?? 0}
     onComplete={(result) => {
-      if (result?.success) setResumeState((previous) => previous ? {
-        ...previous,
-        // A successful statue disguise breaks the guard's lock-on. Room1
-        // restarts that guard at its saved position with a new patrol target.
-        guard: previous.guard ? { ...previous.guard, mode: 'patrol' } : previous.guard,
-      } : previous);
+      if (result?.success) setResumeState(afterSuccessfulPose);
       if (result?.reason === 'timeout') setGameOver(true);
       setActiveExhibitId(null);
     }}
@@ -214,6 +236,11 @@ function App() {
       setTreasureUnlockActive(true);
     }}
   />;
+  }
+
+  return <ProgressNavigationProvider node={progressNode} onSelect={selectTestStage}>
+    <React.Fragment key={testRun}>{renderStage()}</React.Fragment>
+  </ProgressNavigationProvider>;
 }
 
 function MuseumHeist() {
